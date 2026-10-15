@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html><head><title>403 Access denied by allowlist policy</title></head><body>
+<pre>
+403 Forbidden: access denied by allowlist policy
+
+You are running in an isolated environment with limited network access.
+This request was blocked because its destination is not on the allowlist:
+
+    %M %U
+
+Retrying or using another route will not work. If you need this resource,
+ask the user to allow it in the agent-proxy.
+</pre>
+</body></html>

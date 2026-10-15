@@ -1,0 +1,95 @@
+# podman kube play examples/pod.yaml
+# Containers start in order, but kube play does not wait for the proxy to be ready:
+# the agent's entrypoint polls the proxy until it can fetch the CA cert.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: zaun
+  annotations:
+    io.podman.annotations.userns: "keep-id"
+
+spec:
+  containers:
+    - name: proxy
+      image: localhost/zaun-agent-proxy:latest
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        capabilities:
+          add: [NET_ADMIN]
+      env:
+        - name: VERIFY_UPSTREAM_TLS
+          value: 0
+        - name: UI_PASSWORD
+          value: changeme-f641d3a8392bcabe10b2
+      ports:
+        - containerPort: 8080
+          hostPort: 18080
+          hostIP: 127.0.0.1
+      volumeMounts:
+        - name: proxy-data
+          mountPath: /data
+
+    - name: agent
+      image: docker.io/library/debian:trixie-slim
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [NET_ADMIN, NET_RAW]
+
+
+      env:
+        - {name: HTTP_PROXY, value: "http://127.0.0.1:3128"}
+        - {name: HTTPS_PROXY, value: "http://127.0.0.1:3128"}
+        - {name: http_proxy, value: "http://127.0.0.1:3128"}
+        - {name: https_proxy, value: "http://127.0.0.1:3128"}
+        - {name: NO_PROXY, value: "localhost,127.0.0.1"}
+        - {name: no_proxy, value: "localhost,127.0.0.1"}
+        - {name: NODE_EXTRA_CA_CERTS, value: /tmp/ca/zaun-agent-proxy.crt}
+        - {name: SSL_CERT_FILE, value: /tmp/ca/bundle.crt}
+        - {name: CURL_CA_BUNDLE, value: /tmp/ca/bundle.crt}
+        - {name: GIT_SSL_CAINFO, value: /tmp/ca/bundle.crt}
+        - {name: REQUESTS_CA_BUNDLE, value: /tmp/ca/bundle.crt}
+        - {name: PIP_CERT, value: /tmp/ca/bundle.crt}
+        - {name: NPM_CONFIG_CAFILE, value: /tmp/ca/bundle.crt}
+
+      volumeMounts:
+        - name: zaun-share
+          mountPath: /share
+
+      command: ["bash", "-c"]
+      args:
+        - |
+          set -eu
+          mkdir -p /tmp/ca
+
+          fetch_ca() {
+            exec 3<>/dev/tcp/127.0.0.1/8080 || return 1
+            printf 'GET /ca.crt HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3
+            sed '1,/^\r$/d' <&3 > /tmp/ca/zaun-agent-proxy.crt
+            exec 3<&-
+          }
+
+          until fetch_ca 2>/dev/null && grep -q 'BEGIN CERTIFICATE' /tmp/ca/zaun-agent-proxy.crt; do
+            sleep 1
+          done
+
+          {
+            cat /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
+            cat /tmp/ca/zaun-agent-proxy.crt
+          } > /tmp/ca/bundle.crt
+          exec sleep infinity
+
+  volumes:
+    - name: proxy-data
+      emptyDir: {}    # for non-persistent rules
+      # persistentVolumeClaim: # for persistent rules
+      #   claimName: agent-proxy-data
+
+    - name: zaun-share
+      hostPath:
+        path: /tmp/zaun-share
+        type: Directory

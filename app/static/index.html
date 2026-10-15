@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zaun Agent Proxy</title>
+<link rel="stylesheet" href="/static/style.css">
+<script>
+  // apply the saved theme before first paint
+  try { const t = localStorage.getItem("agent-proxy-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
+</script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="wordmark">zaun<span class="dim">:</span>agent-proxy</span>
+    <span class="policy">policy <b>default&nbsp;deny</b></span>
+  </div>
+  <div class="status">
+    <span id="squid-status" class="stat">squid …</span>
+    <span id="fw-status" class="stat">firewall …</span>
+    <span id="tls-status" class="stat" hidden></span>
+    <span id="apply-status" class="stat">…</span>
+    <div class="theme" role="group" aria-label="Theme">
+      <button data-theme-set="auto">auto</button><button data-theme-set="light">light</button><button data-theme-set="dark">dark</button>
+    </div>
+  </div>
+</header>
+
+<nav id="tabs">
+  <button data-tab="allow" class="active">allow</button>
+  <button data-tab="deny">deny</button>
+  <button data-tab="tcp">firewall</button>
+  <button data-tab="logs">log</button>
+  <button data-tab="ca">ca</button>
+  <button data-tab="config">config</button>
+</nav>
+
+<div id="error-banner" class="banner" hidden></div>
+
+<main>
+  <!-- rule tabs share one template, filled in by app.js -->
+  <section id="tab-allow" class="tab active">
+    <h2>Proxy allow</h2>
+    <p class="help">HTTP/HTTPS targets agents may reach through the proxy (port 3128). HTTPS is decrypted, so path rules work for both.
+      Examples: <code>test.host.io</code>, <code>*.host.io</code>, <code>http://test.io</code>, <code>https://api.x.io/v1/*</code>, <code>42.42.42.42</code>, <code>host.io:8443</code>.
+      Without a port only the default ports (80/443) match.
+      WebSockets are denied by default. Enable Allow WebSockets on a rule to permit upgrades within its target, port and path.</p>
+    <div class="rule-ui" data-kind="allow"></div>
+  </section>
+
+  <section id="tab-deny" class="tab">
+    <h2>Deny rules</h2>
+    <p class="help">Deny rules are evaluated before <em>every</em> allow rule and always win, e.g. <code>http://test.io/*</code>, <code>*.host.io/admin/*</code>, <code>evil.host.io</code>.
+      Path matching for deny rules is case-insensitive.</p>
+    <div class="rule-ui" data-kind="deny"></div>
+  </section>
+
+  <section id="tab-tcp" class="tab">
+    <h2>Firewall</h2>
+    <p class="help">Direct (non-HTTP) connections from the pod, enforced with nftables — e.g. <code>42.42.42.42</code> port <code>3306</code>.
+      Targets may be an IP, a CIDR or a hostname (re-resolved periodically). Ports: <code>3306</code>, <code>5432,6379</code>, <code>8000-8100</code>.
+      Everything else leaving the pod is rejected, except the proxy's own traffic.</p>
+    <div class="rule-ui" data-kind="tcp"></div>
+  </section>
+
+  <section id="tab-logs" class="tab">
+    <h2>Access log</h2>
+    <div class="toolbar">
+      <select id="log-verdict"><option value="">verdict: any</option><option>ALLOW</option><option>DENY</option></select>
+      <select id="log-source"><option value="">source: any</option><option value="proxy">proxy</option><option value="firewall">firewall</option></select>
+      <input id="log-search" type="search" placeholder="filter: host, path, rule, client…">
+      <button id="log-pause" class="secondary">pause</button>
+      <button id="log-clear" class="secondary">clear</button>
+      <span id="log-count" class="muted"></span>
+      <span id="log-live" class="stat">connecting…</span>
+    </div>
+    <div class="table-wrap">
+      <table class="logs">
+        <thead><tr><th class="c-date">Date</th><th class="c-verdict">Verdict</th><th>Rule</th><th class="c-method">Method</th><th class="c-host">Host</th><th class="c-path">Path</th><th class="c-status">Status</th><th class="c-client">Client</th></tr></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tab-ca" class="tab">
+    <h2>Certificate authority</h2>
+    <p class="help">Agents must trust this CA: the proxy decrypts HTTPS and re-signs it with this certificate.
+      Agents in the pod can also fetch it without credentials from <code id="ca-url"></code>.</p>
+    <dl class="kv">
+      <dt>Subject</dt><dd id="ca-subject">…</dd>
+      <dt>Valid until</dt><dd id="ca-expiry">…</dd>
+      <dt>SHA-256</dt><dd id="ca-fp" class="mono">…</dd>
+    </dl>
+    <div class="toolbar">
+      <button id="ca-copy">copy pem</button>
+      <a class="button secondary" href="/ca.crt">download .crt</a>
+    </div>
+    <textarea id="ca-pem" readonly rows="14" class="mono"></textarea>
+    <h3>Install on a host</h3>
+    <div class="snippets">
+      <div><h4>Debian / Ubuntu</h4><pre id="snip-debian"></pre></div>
+      <div><h4>Fedora / RHEL</h4><pre id="snip-rhel"></pre></div>
+      <div><h4>Alpine</h4><pre id="snip-alpine"></pre></div>
+      <div><h4>Runtimes that ignore the system store</h4><pre id="snip-env"></pre></div>
+    </div>
+  </section>
+
+  <section id="tab-config" class="tab">
+    <h2>Configuration</h2>
+    <h3>Settings</h3>
+    <div class="settings">
+      <label class="setting"><span class="switch"><input id="set-verify-tls" type="checkbox"><span></span></span>
+        <span><b>verify upstream TLS</b>
+          <span class="muted">Off: accept invalid upstream certificates (self-signed, expired, wrong name). Agents still get a certificate signed by the proxy CA. Applied live and stored in the config.</span></span></label>
+    </div>
+    <h3>Export / import</h3>
+    <div class="toolbar">
+      <a class="button" href="/api/export">export json</a>
+      <label class="button secondary">import file<input id="import-file" type="file" accept="application/json,.json" hidden></label>
+      <label class="inline"><input type="radio" name="import-mode" value="replace" checked> replace all rules</label>
+      <label class="inline"><input type="radio" name="import-mode" value="merge"> merge</label>
+      <button id="reapply" class="secondary">re-apply</button>
+    </div>
+    <h3>Generated squid policy</h3>
+    <pre id="gen-squid" class="code"></pre>
+    <h3>Generated nftables ruleset</h3>
+    <pre id="gen-nft" class="code"></pre>
+  </section>
+</main>
+
+<template id="rule-ui-tpl">
+  <form class="add-form">
+    <input name="target" placeholder="target" required>
+    <input name="ports" class="tcp-only" placeholder="ports, e.g. 3306">
+    <select name="proto" class="tcp-only"><option>tcp</option><option>udp</option></select>
+    <input name="name" placeholder="rule name (optional)" pattern="[A-Za-z0-9._\-]{1,48}">
+    <input name="comment" placeholder="comment (optional)">
+    <label class="inline allow-only"><span class="switch"><input type="checkbox" name="allow_websockets"><span></span></span> Allow WebSockets</label>
+    <button type="submit">add + apply</button>
+  </form>
+  <div class="table-wrap">
+    <table class="rules">
+      <thead><tr><th class="c-on">On</th><th>Name</th><th>Target</th><th class="allow-only c-ws" title="WebSockets">WS</th><th class="tcp-only c-ports">Proto/Ports</th><th>Comment</th><th class="c-act"></th></tr></thead>
+      <tbody></tbody>
+      <tfoot><tr class="default-row"><td class="c-on"><span class="fixed">fixed</span></td><td class="mono">default-deny</td><td colspan="3" class="muted">everything not explicitly allowed is denied (cannot be changed)</td><td></td></tr></tfoot>
+    </table>
+  </div>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

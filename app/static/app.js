@@ -280,6 +280,16 @@ $("#reapply").addEventListener("click", async () => {
 
 const logs = { entries: [], paused: false, pending: [], max: 5000, shown: 1000 };
 
+function updateLogCounts() {
+  const count = Math.min(logs.entries.length + logs.pending.length, logs.max);
+  const tab = $('#tabs [data-tab="logs"]');
+  tab.dataset.count = count;
+  tab.setAttribute("aria-label", `Logs: ${count} ${count === 1 ? "entry" : "entries"}`);
+  tab.title = `${count} buffered log entries (including paused entries)`;
+  const pending = logs.pending.length ? ` · ${logs.pending.length} pending` : "";
+  $("#log-count").textContent = `${$("#log-body").children.length} shown / ${logs.entries.length} buffered${pending}`;
+}
+
 function logMatches(e) {
   const v = $("#log-verdict").value, s = $("#log-source").value, q = $("#log-search").value.trim().toLowerCase();
   if (v && e.verdict !== v) return false;
@@ -315,17 +325,20 @@ function renderLogs() {
     if (logMatches(logs.entries[i])) rows.push(logRow(logs.entries[i]));
   }
   $("#log-body").replaceChildren(...rows);
-  $("#log-count").textContent = `${rows.length} shown / ${logs.entries.length} buffered`;
+  updateLogCounts();
 }
 
 function addLog(e) {
   logs.entries.push(e);
   if (logs.entries.length > logs.max) logs.entries.splice(0, logs.entries.length - logs.max);
-  if (!logMatches(e)) return;
+  if (!logMatches(e)) {
+    updateLogCounts();
+    return;
+  }
   const body = $("#log-body");
   body.prepend(logRow(e));
   while (body.children.length > logs.shown) body.lastChild.remove();
-  $("#log-count").textContent = `${body.children.length} shown / ${logs.entries.length} buffered`;
+  updateLogCounts();
 }
 
 async function startLogs() {
@@ -340,8 +353,11 @@ async function startLogs() {
   es.onerror = () => setPill($("#log-live"), "reconnecting…", "warn");
   es.onmessage = (m) => {
     const e = JSON.parse(m.data);
-    if (logs.paused) logs.pending.push(e);
-    else addLog(e);
+    if (logs.paused) {
+      logs.pending.push(e);
+      if (logs.pending.length > logs.max) logs.pending.splice(0, logs.pending.length - logs.max);
+      updateLogCounts();
+    } else addLog(e);
   };
 }
 
@@ -352,12 +368,14 @@ $("#log-pause").addEventListener("click", (ev) => {
   ev.currentTarget.textContent = logs.paused ? "resume" : "pause";
   if (!logs.paused) {
     logs.entries.push(...logs.pending);
+    if (logs.entries.length > logs.max) logs.entries.splice(0, logs.entries.length - logs.max);
     logs.pending = [];
     renderLogs();
   }
 });
 $("#log-clear").addEventListener("click", () => {
   logs.entries = [];
+  logs.pending = [];
   renderLogs();
 });
 

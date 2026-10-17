@@ -12,7 +12,7 @@ in a Debian container and comes with a web UI for managing rules live.
 - **Live apply**: every add, edit, toggle or delete is validated and applied immediately (squid reconfigure + one atomic nftables transaction). If validation fails, nothing changes.
 - **Log tab**: live stream of every access from both layers, with date, verdict, rule name, method, host, path, status and client
 - **CA tab**: shows the interception CA so you can copy it, download it, or use the install snippets
-- **Config tab**: switch settings live (upstream TLS verification), export/import the config as JSON (replace or merge) and view the generated squid/nft config
+- **Config tab**: switch settings live (upstream proxy and TLS verification), export/import the config as JSON (replace or merge) and view the generated squid/nft config
 
 ## How it works
 
@@ -97,6 +97,9 @@ Rule names may be reused. Each rule has a separate ID; log labels use `<id>_<nam
 | `UI_USER` | `admin` | |
 | `UI_PORT` / `UI_LISTEN` | `8080` / `0.0.0.0` | |
 | `FIREWALL_ENFORCE` | `1` | `0` = squid only, no nftables (no `NET_ADMIN` needed, no L4 enforcement) |
+| `UPSTREAM_PROXY` | empty (direct) | Upstream HTTP or HTTPS proxy URL, e.g. `http://proxy.example:3128` or `http://user:pass@proxy.example:3128`. A nonempty URL enables proxy chaining. Percent-encode special characters in URL credentials. Initial value only; saved UI settings win over the env. |
+| `UPSTREAM_PROXY_USER` | empty | Optional Basic authentication username (when credentials are not included in the URL). |
+| `UPSTREAM_PROXY_PASSWORD` | empty | Optional Basic authentication password. |
 | `VERIFY_UPSTREAM_TLS` | `1` | `0` = accept invalid upstream certificates (self-signed, expired, wrong name); agents still see a cert signed by the proxy CA. Mimicked certs of origins without an Authority Key Identifier (typically self-signed) also lack one, which Python ≥ 3.13 `ssl.create_default_context()` rejects (`VERIFY_X509_STRICT`). Initial value only: it can be switched live in the Config tab, and the value stored in `config.json` (`settings`) wins over the env |
 | `ALLOWED_CLIENTS` | private ranges + loopback | source networks squid accepts |
 | `DNS_REFRESH_SECONDS` | `300` | re-resolve hostname firewall targets |
@@ -158,3 +161,24 @@ proxy); without a scheme `http://` is assumed. On import, the file's
 ```bash
 python3 -m unittest discover -s tests     # pattern → regex / config generation tests
 ```
+
+### Upstream proxy
+
+Set `UPSTREAM_PROXY=http://proxy.example:3128` to forward allowed HTTP and HTTPS
+requests through a parent proxy. HTTPS destinations use the parent's CONNECT support;
+agent-proxy still enforces its normal allow/deny policy and TLS inspection.
+HTTP and HTTPS parent URLs are supported (no SOCKS). HTTPS parents use system trusted
+CAs. An unavailable parent causes requests to fail; there is no direct fallback.
+Raw TCP/UDP firewall rules continue to connect directly.
+
+In **Config → Upstream proxy**, set the URL, optional username/password, and enabled
+checkbox, then click **save upstream**. Changes apply without restarting the container;
+existing connections may finish. Disable it to restore direct HTTP(S) connections
+while retaining the saved URL and credentials. Leave the password blank to keep it,
+or select **clear saved password** to remove it. URL credentials override separate fields.
+Settings persist in `/data/config.json` and override environment defaults on restart.
+The settings API uses `upstream_proxy_enabled`, `upstream_proxy_url`,
+`upstream_proxy_username`, and `upstream_proxy_password`; omit the password to keep it,
+or send an empty string to clear it. State responses omit the password and generated
+config responses redact it. Config exports include credentials so imports can restore
+the complete configuration; store exports securely.

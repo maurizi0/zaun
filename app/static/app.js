@@ -65,6 +65,15 @@ function renderStatus() {
   $("#tls-status").hidden = verifyTls;
   setPill($("#tls-status"), "upstream tls unverified", "warn");
   $("#set-verify-tls").checked = verifyTls;
+  const form = $("#upstream-form");
+  if (form.dataset.dirty !== "true") {
+    $("#set-upstream-enabled").checked = !!state.settings?.upstream_proxy_enabled;
+    $("#set-upstream-url").value = state.settings?.upstream_proxy_url || "";
+    $("#set-upstream-user").value = state.settings?.upstream_proxy_username || "";
+    $("#set-upstream-password").value = "";
+    $("#set-upstream-password").placeholder = state.upstream_proxy_password_set ? "saved password (leave blank to keep)" : "password (optional)";
+    $("#set-upstream-clear-password").checked = false;
+  }
   const a = state.apply || {};
   if (a.ok === false) setPill($("#apply-status"), "apply failed", "bad");
   else if (a.at) {
@@ -240,6 +249,27 @@ $("#import-file").addEventListener("change", async (ev) => {
 
 $("#set-verify-tls").addEventListener("change", async (ev) => {
   if (await mutate("PUT", "/api/settings", { verify_upstream_tls: ev.target.checked })) loadGenerated();
+});
+
+$("#upstream-form").addEventListener("input", (ev) => { ev.currentTarget.dataset.dirty = "true"; });
+$("#upstream-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const button = ev.currentTarget.querySelector("button");
+  button.disabled = true;
+  const settings = {
+    upstream_proxy_enabled: $("#set-upstream-enabled").checked,
+    upstream_proxy_url: $("#set-upstream-url").value.trim(),
+    upstream_proxy_username: $("#set-upstream-user").value,
+  };
+  const password = $("#set-upstream-password").value;
+  if (password || $("#set-upstream-clear-password").checked) settings.upstream_proxy_password = password;
+  try {
+    if (await mutate("PUT", "/api/settings", settings)) {
+      $("#upstream-form").dataset.dirty = "false";
+      renderStatus();
+      loadGenerated();
+    }
+  } finally { button.disabled = false; }
 });
 
 $("#reapply").addEventListener("click", async () => {

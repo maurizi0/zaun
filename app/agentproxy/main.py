@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 
 from . import apply as applier
 from . import config as cfg
+from . import upstream
 from .logs import LogHub, parse_nflog, parse_squid, recent
 from .rules import DEFAULT_RULE, Rule, RuleError, validate_rule
 
@@ -150,7 +151,8 @@ def _state_doc() -> dict:
         "apply": state.last_apply,
         "squid_running": applier.squid_running(),
         "firewall_enforced": cfg.FIREWALL_ENFORCE,
-        "settings": state.settings,
+        "settings": {k: v for k, v in state.settings.items() if k != "upstream_proxy_password"},
+        "upstream_proxy_password_set": bool(state.settings.get("upstream_proxy_password")),
     }
 
 
@@ -260,7 +262,7 @@ async def import_config(request: Request):
 @app.get("/api/generated")
 async def generated():
     return {
-        "squid": cfg.SQUID_RULES.read_text() if cfg.SQUID_RULES.exists() else "",
+        "squid": upstream.redact(cfg.SQUID_RULES.read_text()) if cfg.SQUID_RULES.exists() else "",
         "nft": cfg.NFT_FILE.read_text() if cfg.NFT_FILE.exists() else "",
     }
 

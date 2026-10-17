@@ -19,7 +19,7 @@ def main() -> int:
     if not cfg.CONFIG_FILE.exists():
         cfg.save_config(rules, settings)
     elif settings != cfg.DEFAULT_SETTINGS:
-        print(f"bootstrap: settings in {cfg.CONFIG_FILE} override the env: {settings}", file=sys.stderr)
+        print(f"bootstrap: settings in {cfg.CONFIG_FILE} override the env: (saved settings)", file=sys.stderr)
     try:
         apply(rules, settings, reconfigure=False)
     except ApplyError as e:

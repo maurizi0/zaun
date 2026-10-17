@@ -114,7 +114,32 @@
         <span><b>verify upstream TLS</b>
           <span class="muted">Off: accept invalid upstream certificates (self-signed, expired, wrong name). Agents still get a certificate signed by the proxy CA. Applied live and stored in the config.</span></span></label>
     </div>
+    <h3>Upstream proxy</h3>
+    <form id="upstream-form" class="settings upstream-settings" autocomplete="off">
+      <label class="setting"><span class="switch"><input id="set-upstream-enabled" type="checkbox" aria-describedby="upstream-help"><span></span></span>
+        <span><b>use upstream proxy</b>
+          <span id="upstream-help" class="muted">Forward allowed HTTP(S) requests through an HTTP or HTTPS proxy. When enabled, requests never fall back to direct access.</span></span></label>
+      <div class="upstream-fields">
+        <label class="setting-field upstream-url" for="set-upstream-url">Proxy URL
+          <input id="set-upstream-url" type="url" placeholder="http://proxy.example:3128" spellcheck="false" aria-describedby="upstream-url-help">
+          <span id="upstream-url-help" class="field-help">Proxy on this Podman host? Try <code>http://host.containers.internal:8181</code>.</span>
+        </label>
+        <label class="setting-field" for="set-upstream-user">Username <span class="muted">(optional)</span>
+          <input id="set-upstream-user" placeholder="username" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="setting-field" for="set-upstream-password">Password <span class="muted">(optional)</span>
+          <input id="set-upstream-password" type="password" placeholder="password (optional)" autocomplete="new-password" aria-describedby="upstream-password-help">
+          <span id="upstream-password-help" class="field-help">Leave blank to keep the saved password.</span>
+        </label>
+      </div>
+      <div class="upstream-actions">
+        <label class="inline"><span class="switch"><input id="set-upstream-clear-password" type="checkbox"><span></span></span> clear saved password</label>
+        <button type="submit">save upstream</button>
+      </div>
+      <p class="field-help">Saved settings override environment defaults and apply live to new requests. Existing connections may finish. Raw TCP rules remain direct.</p>
+    </form>
     <h3>Export / import</h3>
+    <p class="muted">Exported JSON includes upstream credentials. Keep it private.</p>
     <div class="toolbar">
       <a class="button" href="/api/export">export json</a>
       <label class="button secondary">import file<input id="import-file" type="file" accept="application/json,.json" hidden></label>

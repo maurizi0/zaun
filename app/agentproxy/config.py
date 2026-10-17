@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 from .rules import Rule, RuleError, validate_rule
+from . import upstream
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 RUN_DIR = Path(os.environ.get("RUN_DIR", "/run/agent-proxy"))
@@ -34,7 +35,13 @@ LOG_MAX_BYTES = int(os.environ.get("LOG_MAX_BYTES", str(50 * 1024 * 1024)))
 
 CONFIG_VERSION = 1
 # runtime settings; the env values are the defaults for configs that don't set them
-DEFAULT_SETTINGS = {"verify_upstream_tls": VERIFY_UPSTREAM_TLS}
+DEFAULT_SETTINGS = {
+    "verify_upstream_tls": VERIFY_UPSTREAM_TLS,
+    "upstream_proxy_enabled": bool(os.environ.get("UPSTREAM_PROXY", "")),
+    "upstream_proxy_url": os.environ.get("UPSTREAM_PROXY", ""),
+    "upstream_proxy_username": os.environ.get("UPSTREAM_PROXY_USER", ""),
+    "upstream_proxy_password": os.environ.get("UPSTREAM_PROXY_PASSWORD", ""),
+}
 
 
 def atomic_write(path: Path, text: str, mode: int = 0o644) -> None:
@@ -78,15 +85,17 @@ def settings_from_doc(doc: dict, base: dict | None = None) -> dict:
     for key, value in raw.items():
         if key not in DEFAULT_SETTINGS:
             raise RuleError(f"unknown setting '{key}'")
-        if not isinstance(value, bool):
-            raise RuleError(f"setting '{key}' must be true or false")
+        expected = type(DEFAULT_SETTINGS[key])
+        if not isinstance(value, expected):
+            label = "true or false" if expected is bool else "a string"
+            raise RuleError(f"setting '{key}' must be {label}")
         settings[key] = value
-    return settings
+    return upstream.normalize(settings)
 
 
 def load_settings() -> dict:
     if not CONFIG_FILE.exists():
-        return dict(DEFAULT_SETTINGS)
+        return settings_from_doc({})
     return settings_from_doc(json.loads(CONFIG_FILE.read_text()))
 
 

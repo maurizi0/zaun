@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 from . import config as cfg
+from . import upstream
 from .rules import Rule, nft_ruleset, parse_tcp_target, squid_rules_conf
 
 log = logging.getLogger("agentproxy.apply")
@@ -57,7 +58,7 @@ def _check_squid(rules_text: str) -> None:
         p = _run(["squid", "-k", "parse", "-f", str(main)])
         errors = [l for l in (p.stdout + p.stderr).splitlines() if "ERROR" in l or "FATAL" in l]
         if p.returncode != 0 or errors:
-            raise ApplyError("squid rejected the configuration:\n" + "\n".join(errors or [p.stderr[-2000:]]))
+            raise ApplyError("squid rejected the configuration:\n" + upstream.redact("\n".join(errors or [p.stderr[-2000:]])))
 
 
 def squid_running() -> bool:
@@ -99,7 +100,7 @@ def render(rules: list[Rule], settings: dict,
            resolved: dict[str, list[str]] | None = None) -> tuple[str, str]:
     if resolved is None:
         resolved = resolve_all(rules)
-    return (squid_rules_conf(rules, cfg.ALLOWED_CLIENTS, settings["verify_upstream_tls"]),
+    return (squid_rules_conf(rules, cfg.ALLOWED_CLIENTS, settings["verify_upstream_tls"]) + upstream.squid_conf(settings),
             nft_ruleset(rules, resolved, proxy_matches()))
 
 
@@ -120,6 +121,11 @@ def apply_nft(nft_text: str) -> None:
     cfg.atomic_write(cfg.NFT_FILE, nft_text)
 
 
+def write_squid(text: str) -> None:
+    cfg.atomic_write(cfg.SQUID_RULES, text, 0o640)
+    os.chown(cfg.SQUID_RULES, -1, cfg.SQUID_UID)
+
+
 def apply(rules: list[Rule], settings: dict, reconfigure: bool = True) -> dict:
     """Validate everything first, then commit. Raises ApplyError and leaves the old state on failure."""
     resolved = resolve_all(rules)
@@ -135,14 +141,25 @@ def apply(rules: list[Rule], settings: dict, reconfigure: bool = True) -> dict:
     _check_squid(squid_text)
 
     previous = cfg.SQUID_RULES.read_text() if cfg.SQUID_RULES.exists() else None
-    cfg.atomic_write(cfg.SQUID_RULES, squid_text)
-    if reconfigure and squid_running():
-        p = _run(["squid", "-k", "reconfigure", "-f", str(cfg.SQUID_CONF)])
-        if p.returncode != 0:
-            if previous is not None:
-                cfg.atomic_write(cfg.SQUID_RULES, previous)
-            raise ApplyError("squid reconfigure failed:\n" + p.stderr.strip())
-    apply_nft(nft_text)
+    write_squid(squid_text)
+    running = reconfigure and squid_running()
+    reload_cmd = ["squid", "-k", "reconfigure", "-f", str(cfg.SQUID_CONF)]
+    try:
+        if running:
+            p = _run(reload_cmd)
+            if p.returncode != 0:
+                raise ApplyError("squid reconfigure failed:\n" + upstream.redact(p.stderr.strip()))
+        apply_nft(nft_text)
+    except (ApplyError, subprocess.TimeoutExpired) as error:
+        if previous is not None:
+            write_squid(previous)
+            if running:
+                _run(reload_cmd)
+        else:
+            cfg.SQUID_RULES.unlink(missing_ok=True)
+        if isinstance(error, subprocess.TimeoutExpired):
+            raise ApplyError("timed out applying the configuration; previous Squid policy restored") from None
+        raise
     unresolved = [h for h, a in resolved.items() if not a]
     log.info("applied %d rules (unresolved: %s)", len(rules), unresolved or "none")
     return {"resolved": resolved, "unresolved": unresolved}

@@ -277,3 +277,20 @@ pre.code { max-height: 440px; overflow: auto; border: 1px solid var(--line); }
 .setting { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; font-size: 13.5px; }
 .setting .switch { margin-top: 3px; flex: none; }
 .setting .muted { display: block; }
+
+/* Upstream settings share the existing switches, controls and theme colors. */
+.upstream-settings { gap: 18px; }
+.upstream-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.setting-field { display: block; min-width: 0; color: var(--fg-2); font: 12.5px/1.5 var(--mono); }
+.setting-field input { display: block; width: 100%; margin-top: 6px; }
+.upstream-url { grid-column: 1 / -1; }
+.field-help { display: block; margin: 6px 0 0; color: var(--muted); font: 13px/1.5 var(--sans); }
+.field-help code { overflow-wrap: anywhere; }
+.upstream-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.upstream-actions .switch { margin-right: 4px; }
+.upstream-actions button:disabled { opacity: .55; cursor: wait; }
+.upstream-settings > .field-help { margin: 0; }
+
+@media (max-width: 560px) {
+  .upstream-fields { grid-template-columns: minmax(0, 1fr); }
+}

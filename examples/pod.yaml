@@ -1,6 +1,11 @@
 # podman kube play examples/pod.yaml
 # Containers start in order, but kube play does not wait for the proxy to be ready:
 # the agent's entrypoint polls the proxy until it can fetch the CA cert.
+#
+# IMPORTANT:
+# This setup allows the agent to reach any port on the host via
+# the host mapping host.containers.internal.
+
 apiVersion: v1
 kind: Pod
 metadata:

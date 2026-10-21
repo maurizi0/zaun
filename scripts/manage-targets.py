@@ -251,7 +251,7 @@ def main() -> int:
 
     a = sub.add_parser("add", parents=[common], help="add a single rule")
     a.add_argument("kind", choices=KINDS, help="allow / deny (HTTP(S) via squid) or tcp (L4 firewall)")
-    a.add_argument("target", help="e.g. api.x.io, *.x.io, https://x.io/v1/*, 42.42.42.42, 10.0.0.0/24")
+    a.add_argument("target", help="proxy: host/URL or comma-separated group (quote it); firewall: one IP, CIDR or hostname")
     a.add_argument("--name", help="rule name (generated from kind + target when omitted)")
     a.add_argument("--ports", help="tcp only: 3306, 80,443 or 8000-8100")
     a.add_argument("--proto", choices=("tcp", "udp"), help="tcp only: transport protocol (default tcp)")

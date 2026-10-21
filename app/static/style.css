@@ -158,11 +158,11 @@ h4 { font: 500 12px var(--mono); margin: 0 0 8px; color: var(--fg-2); }
 /* ------------------------------------------------------------- controls */
 
 input, select, textarea {
-  font: 13px var(--mono); color: var(--fg); background: var(--surface);
+  font: 13px/16px var(--mono); color: var(--fg); background: var(--surface);
   border: 1px solid var(--line-strong); border-radius: 4px; padding: 7px 10px;
   transition: border-color .12s, box-shadow .12s;
 }
-input::placeholder { color: var(--muted); }
+input::placeholder, textarea::placeholder { color: var(--muted); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
 input:invalid:not(:placeholder-shown) { border-color: var(--bad); }
 select { padding-right: 26px; appearance: none; cursor: pointer;
@@ -190,7 +190,11 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; color: var(-
 input[type=radio] { accent-color: var(--accent); margin: 0; }
 
 .add-form, .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
-.add-form input[name=target] { flex: 2 1 240px; }
+.add-form textarea[name=target] { flex: 2 1 240px; }
+textarea[name=target] {
+  height: 32px; min-height: 32px; min-width: 160px;
+  resize: both; overflow: auto; vertical-align: top;
+}
 .add-form input[name=name], .add-form input[name=comment] { flex: 1 1 160px; }
 .add-form input[name=ports] { flex: 0 1 150px; }
 .toolbar input[type=search] { flex: 1 1 240px; }
@@ -211,7 +215,7 @@ tbody tr:hover { background: var(--accent-soft); }
 td.mono { color: var(--fg); }
 tr.disabled td:not(.c-on):not(.c-act) { color: var(--muted); }
 tr.disabled td.mono { text-decoration: line-through; text-decoration-color: var(--line-strong); }
-td input { width: 100%; }
+td input, td textarea { width: 100%; }
 table.rules td { font-size: 13px; line-height: 20px; }
 .c-on { width: 56px; }
 .c-ws { width: 58px; text-align: center; }

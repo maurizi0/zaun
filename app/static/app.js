@@ -93,7 +93,8 @@ function setupRuleUIs() {
     $("tfoot td[colspan]", host).colSpan = kind === "deny" ? 2 : 3;
     if (kind !== "allow") $$(".allow-only", host).forEach((el) => el.remove());
     const form = $("form", host);
-    form.target.placeholder = kind === "tcp" ? "IP, CIDR or hostname" : kind === "deny" ? "e.g. http://test.io/*" : "e.g. *.host.io";
+    form.target.setAttribute("aria-label", kind === "tcp" ? "Target" : "Targets separated by commas");
+    form.target.placeholder = kind === "tcp" ? "IP, CIDR or hostname" : "e.g. https://test.host.io, *.host2.io";
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const body = { kind, target: form.target.value.trim(), name: form.name.value.trim(), comment: form.comment.value.trim() };
@@ -111,7 +112,7 @@ function ruleRow(r) {
   tr.innerHTML = `
     <td class="c-on"><label class="switch"><input type="checkbox" ${r.enabled ? "checked" : ""}><span></span></label></td>
     <td class="mono">${esc(r.name)}</td>
-    <td class="mono">${esc(r.target)}</td>
+    <td class="mono">${r.kind === "tcp" ? esc(r.target) : r.target.split(",").map((target) => `<div>${esc(target.trim())}</div>`).join("")}</td>
     ${r.kind === "allow" ? `<td class="c-ws"><span class="ws-check ${r.allow_websockets ? "allowed" : ""}" role="img" aria-label="WebSockets ${r.allow_websockets ? "allowed" : "denied"}" title="WebSockets ${r.allow_websockets ? "allowed" : "denied"}">${r.allow_websockets ? "✓" : "—"}</span></td>` : ""}
     ${r.kind === "tcp" ? `<td class="mono">${esc(r.proto)}/${esc(r.ports)}</td>` : ""}
     <td class="muted">${esc(r.comment)}</td>
@@ -134,7 +135,7 @@ function editRow(tr, r) {
   tr.innerHTML = `
     <td class="c-on"></td>
     <td>${input("name", r.name)}</td>
-    <td>${input("target", r.target)}</td>
+    <td><textarea name="target" rows="1" aria-label="Targets">${esc(r.target)}</textarea></td>
     ${r.kind === "allow" ? `<td class="c-ws"><label class="switch"><input type="checkbox" name="allow_websockets" aria-label="Allow WebSockets" ${r.allow_websockets ? "checked" : ""}><span></span></label></td>` : ""}
     ${r.kind === "tcp" ? `<td class="nowrap"><select name="proto"><option ${r.proto === "tcp" ? "selected" : ""}>tcp</option><option ${r.proto === "udp" ? "selected" : ""}>udp</option></select>${input("ports", r.ports, "short")}</td>` : ""}
     <td>${input("comment", r.comment)}</td>
@@ -148,8 +149,11 @@ function editRow(tr, r) {
   };
   $(".save", tr).addEventListener("click", save);
   $(".cancel", tr).addEventListener("click", render);
-  $$("input", tr).forEach((i) => i.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter") save();
+  $$("input, textarea", tr).forEach((i) => i.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && (i.tagName !== "TEXTAREA" || ev.ctrlKey || ev.metaKey)) {
+      ev.preventDefault();
+      save();
+    }
     if (ev.key === "Escape") render();
   }));
   $("[name=target]", tr).focus();

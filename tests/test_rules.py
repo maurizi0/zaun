@@ -185,6 +185,45 @@ class RuleTest(unittest.TestCase):
         self.assertIn("acl r3_cport port 8443", sq)
         self.assertIn("acl r3_ws_name ssl::server_name_regex --client-requested -i ^one\\.example\\.com$", sq)
 
+    def test_proxy_target_groups(self):
+        raw = {"kind": "allow", "name": "group", "target":
+               " https://test.host.io,*.host2.io, https://host3.io/api ",
+               "allow_websockets": True}
+        rule = validate_rule(raw, [], rule_id="rgroup")
+        self.assertEqual(rule.target,
+                         "https://test.host.io, *.host2.io, https://host3.io/api")
+        restored = cfg.rules_from_export(cfg.export_doc([rule], cfg.DEFAULT_SETTINGS))
+        self.assertEqual(restored[0].to_dict(), rule.to_dict())
+        sq = squid_rules_conf(restored, ["127.0.0.1"])
+        self.assertEqual(sq.count("annotate_transaction rule=rgroup_group"), 1)
+        for index, target in enumerate(rule.target.split(", "), 1):
+            aid = f"rgroup_t{index}"
+            self.assertIn(f"acl {aid}_url url_regex {parse_pattern(target).url_regex()}", sq)
+            self.assertIn(f"http_access allow CONNECT {aid}_chost {aid}_cport rgroup_mark", sq)
+            self.assertIn(f"websocket allow {aid}_url ap_https ap_bumped {aid}_ws_bound {aid}_ws_name", sq)
+            self.assertIn(f"acl {aid}_ws_bound note ap_ws_{aid} true", sq)
+        disabled_ws = validate_rule({**rule.to_dict(), "allow_websockets": False}, [], rule_id=rule.id)
+        without_ws = squid_rules_conf([disabled_ws], ["127.0.0.1"])
+        self.assertNotIn("websocket allow", without_ws)
+        self.assertIn("rgroup_t3_url", without_ws)
+        rule.enabled = False
+        self.assertNotIn("rgroup", squid_rules_conf([rule], ["127.0.0.1"]))
+
+    def test_group_validation_and_firewall_exclusion(self):
+        for target in ("x.io,", ",x.io", "x.io,,y.io", "x.io, ftp://y.io", "x.io, bad host"):
+            with self.assertRaises(RuleError, msg=target):
+                validate_rule({"kind": "allow", "target": target}, [])
+        with self.assertRaises(RuleError):
+            validate_rule({"kind": "tcp", "target": "one.io,two.io", "ports": "443"}, [])
+        deny = validate_rule({"kind": "deny", "target": "one.io, https://two.io/private"}, [], rule_id="rd")
+        allow = Rule("ra", "allow", "all", "*.io", allow_websockets=True)
+        sq = squid_rules_conf([allow, deny], ["127.0.0.1"])
+        self.assertIn("http_access deny CONNECT rd_t1_chost rd_t1_cport rd_mark", sq)
+        self.assertNotIn("rd_t2_chost", sq)
+        self.assertLess(sq.index("http_access deny !CONNECT rd_t2_url"),
+                        sq.index("http_access allow !CONNECT ap_websocket"))
+        self.assertEqual(sq.count("deny_info ERR_AGENT_DENIED rd_mark"), 1)
+
     def test_verify_upstream_tls(self):
         self.assertNotIn("sslproxy_cert_error", squid_rules_conf([], ["127.0.0.1"]))
         sq = squid_rules_conf([], ["127.0.0.1"], verify_upstream_tls=False)

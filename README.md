@@ -5,6 +5,7 @@ A sidecar that controls network egress for AI agents in a podman pod. It is base
 in a Debian container and comes with a web UI for managing rules live.
 
 - **Proxy allow rules** (L7): `test.host.io`, `*.host.io`, `http://test.io`, `https://api.x.io/v1/*`, `42.42.42.42`, `host.io:8443`
+- **Target groups**: proxy allow and deny rules accept comma-separated URLs/hosts, for example `https://test.host.io, *.host2.io, https://host3.io/api`. Each group shares one name, ON/OFF switch and Allow WebSockets setting. Each member retains its own scheme, port and path restrictions. Firewall rules still accept one target. Commas delimit targets; encode literal commas in URL paths as `%2C`. Existing single-target configs remain compatible.
 - **WebSockets**: denied by default. Enable **Allow WebSockets** when adding or editing a proxy allow rule to additionally permit WS/WSS handshakes within that rule’s host, scheme, port and path. Use `https://testing.io` for WSS only or `testing.io` for WS and WSS. Deny rules still win. Existing configs default to off; JSON uses `"allow_websockets": true`. After a successful upgrade, Squid tunnels messages without inspecting them.
 - **Deny rules**: `http://test.io/*`, `*.host.io/admin/*`. These are checked before every allow rule and always win.
 - **Firewall rules** (L3/L4, non-HTTP): `42.42.42.42` tcp `3306`, `10.0.0.0/24` tcp `5432`, `db.internal` tcp `5432,6379`

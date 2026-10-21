@@ -87,7 +87,7 @@ def validate_rule(data: dict, existing: list[Rule], rule_id: str | None = None) 
             raise RuleError("proto must be tcp or udp")
         ports = normalize_ports(str(data.get("ports", "")))
     else:
-        parse_pattern(target)
+        target = ", ".join(parse_proxy_targets(target))
 
     name = str(data.get("name") or "").strip()
     if not name:
@@ -169,6 +169,16 @@ class HttpPattern:
         if self.scheme not in (None, "https"):
             return False
         return not for_deny or self.path is None
+
+
+def parse_proxy_targets(target: str) -> list[str]:
+    """Split a proxy group, validating every member before applying any of it."""
+    targets = [part.strip() for part in target.split(",")]
+    if any(not part for part in targets):
+        raise RuleError("target groups must contain non-empty targets separated by commas")
+    for part in targets:
+        parse_pattern(part)
+    return targets
 
 
 def parse_pattern(target: str) -> HttpPattern:
@@ -269,41 +279,46 @@ def squid_rules_conf(rules: list[Rule], allowed_clients: list[str],
     acls, access, upgrades, websocket_access, bindings = [], [], [], [], []
     # deny rules first: they win over every allow rule
     for r in sorted(active, key=lambda r: r.kind != "deny"):
-        p = parse_pattern(r.target)
-        verb = "deny" if r.kind == "deny" else "allow"
-        flags = "-i " if r.kind == "deny" else ""
+        targets = parse_proxy_targets(r.target)
         acls.append(f"# {r.kind} {r.name}: {r.target}")
         acls.append(f"acl {r.id}_mark annotate_transaction rule={r.id}_{r.name}")
-        acls.append(f"acl {r.id}_url url_regex {flags}{p.url_regex()}")
-        if r.kind == "allow" and r.allow_websockets:
-            # At SslBump1, dstdom/port still identify the original CONNECT.
-            # Evaluate every binding, including overlapping rules. A false
-            # host/port match skips annotation; a true match annotates the
-            # connection, not just the CONNECT transaction.
-            if p.applies_to_connect(for_deny=False):
-                acls += [
-                    f"acl {r.id}_ws_mark annotate_client ap_ws_{r.id}=true",
-                    f"acl {r.id}_ws_bound note ap_ws_{r.id} true",
-                    f"acl {r.id}_ws_name ssl::server_name_regex --client-requested -i {p.connect_host_regex()}",
-                ]
-                bindings.append(r.id)
-            guards = []
-            if "http" in p.schemes:
-                guards.append("ap_http !ap_bumped")
-            if "https" in p.schemes:
-                guards.append(f"ap_https ap_bumped {r.id}_ws_bound {r.id}_ws_name")
-            for guard in guards:
-                match = f"{r.id}_url {guard}"
-                upgrades.append(f"http_upgrade_request_protocols websocket allow {match}")
-                websocket_access.append(f"http_access allow !CONNECT ap_websocket {match} {r.id}_mark")
-        upgrade_guard = "!ap_upgrade " if r.kind == "allow" else ""
-        access.append(f"http_access {verb} !CONNECT {upgrade_guard}{r.id}_url {r.id}_mark")
-        if p.applies_to_connect(for_deny=r.kind == "deny"):
-            acls.append(f"acl {r.id}_chost dstdom_regex -n -i {p.connect_host_regex()}")
-            acls.append(f"acl {r.id}_cport port {p.connect_port}")
-            access.append(f"http_access {verb} CONNECT {r.id}_chost {r.id}_cport {r.id}_mark")
         if r.kind == "deny":
             deny_marks.append(f"{r.id}_mark")
+        for index, target in enumerate(targets):
+            # Keep single-target ACL names compatible; group members need
+            # separate host/port bindings to avoid cross-matching targets.
+            aid = r.id if len(targets) == 1 else f"{r.id}_t{index + 1}"
+            p = parse_pattern(target)
+            verb = "deny" if r.kind == "deny" else "allow"
+            flags = "-i " if r.kind == "deny" else ""
+            acls.append(f"acl {aid}_url url_regex {flags}{p.url_regex()}")
+            if r.kind == "allow" and r.allow_websockets:
+                # At SslBump1, dstdom/port still identify the original CONNECT.
+                # Evaluate every binding, including overlapping rules. A false
+                # host/port match skips annotation; a true match annotates the
+                # connection, not just the CONNECT transaction.
+                if p.applies_to_connect(for_deny=False):
+                    acls += [
+                        f"acl {aid}_ws_mark annotate_client ap_ws_{aid}=true",
+                        f"acl {aid}_ws_bound note ap_ws_{aid} true",
+                        f"acl {aid}_ws_name ssl::server_name_regex --client-requested -i {p.connect_host_regex()}",
+                    ]
+                    bindings.append(aid)
+                guards = []
+                if "http" in p.schemes:
+                    guards.append("ap_http !ap_bumped")
+                if "https" in p.schemes:
+                    guards.append(f"ap_https ap_bumped {aid}_ws_bound {aid}_ws_name")
+                for guard in guards:
+                    match = f"{aid}_url {guard}"
+                    upgrades.append(f"http_upgrade_request_protocols websocket allow {match}")
+                    websocket_access.append(f"http_access allow !CONNECT ap_websocket {match} {r.id}_mark")
+            upgrade_guard = "!ap_upgrade " if r.kind == "allow" else ""
+            access.append(f"http_access {verb} !CONNECT {upgrade_guard}{aid}_url {r.id}_mark")
+            if p.applies_to_connect(for_deny=r.kind == "deny"):
+                acls.append(f"acl {aid}_chost dstdom_regex -n -i {p.connect_host_regex()}")
+                acls.append(f"acl {aid}_cport port {p.connect_port}")
+                access.append(f"http_access {verb} CONNECT {aid}_chost {aid}_cport {r.id}_mark")
     # any-of short-circuits before the side effect when the CONNECT does not
     # match. Each conditional ACL always returns true, so all-of visits every
     # rule. This runs only at SslBump1, never on the rewritten CONNECT at step 2.

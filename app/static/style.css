@@ -237,9 +237,9 @@ table.logs td { padding: 6px 12px; font-size: 12px; border-bottom-color: var(--l
 table.logs td:first-child { padding-left: 2px; }
 table.logs { min-width: 760px; }
 table.logs .c-date { width: 190px; }
-table.logs .c-verdict { width: 80px; }
+table.logs .c-verdict { width: 90px; white-space: nowrap; }
 table.logs .c-method { width: 90px; }
-table.logs .c-status { width: 70px; }
+table.logs .c-status { width: 80px; white-space: nowrap; }
 table.logs .c-host { width: 16%; }
 table.logs .c-path { width: 25%; }
 table.logs .c-client { width: 140px; }

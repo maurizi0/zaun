@@ -151,6 +151,28 @@ function setupTableResizing() {
   }
 }
 
+// Refit on input and on width changes (column dragging and tile breakpoints).
+function fitTextarea(textarea) {
+  if (!textarea.getClientRects().length) return;
+  textarea.style.height = "auto";
+  const style = getComputedStyle(textarea);
+  textarea.style.height = `${textarea.scrollHeight + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth)}px`;
+}
+const textareaWidths = new WeakMap();
+const textareaObserver = new ResizeObserver((entries) => {
+  for (const { target, contentRect } of entries) {
+    if (!target.isConnected) { textareaObserver.unobserve(target); continue; }
+    if (textareaWidths.get(target) === contentRect.width) continue;
+    textareaWidths.set(target, contentRect.width);
+    fitTextarea(target);
+  }
+});
+function setupTextarea(textarea) {
+  textarea.addEventListener("input", () => fitTextarea(textarea));
+  textareaObserver.observe(textarea);
+  fitTextarea(textarea);
+}
+
 function setupRuleUIs() {
   const tpl = $("#rule-ui-tpl");
   for (const host of $$(".rule-ui")) {
@@ -160,6 +182,13 @@ function setupRuleUIs() {
     $("tfoot td[colspan]", host).colSpan = kind === "deny" ? 2 : 3;
     if (kind !== "allow") $$(".allow-only", host).forEach((el) => el.remove());
     const form = $("form", host);
+    if (kind === "tcp") {
+      form.target.rows = 1;
+      const controls = $(".add-controls", form);
+      controls.prepend($(".add-network", controls));
+    }
+    setupTextarea(form.target);
+    form.addEventListener("reset", () => requestAnimationFrame(() => fitTextarea(form.target)));
     form.target.setAttribute("aria-label", kind === "tcp" ? "Target" : "Targets separated by commas");
     form.target.placeholder = kind === "tcp" ? "IP, CIDR or hostname" : "e.g. https://test.host.io, *.host2.io";
     form.addEventListener("submit", async (ev) => {
@@ -225,6 +254,7 @@ function editRow(tr, r) {
     }
     if (ev.key === "Escape") render();
   }));
+  setupTextarea($("[name=target]", tr));
   $("[name=target]", tr).focus();
 }
 
@@ -232,6 +262,7 @@ function renderRules() {
   for (const host of $$(".rule-ui")) {
     const kind = host.dataset.kind;
     const body = $("tbody", host);
+    $$("textarea", body).forEach((textarea) => textareaObserver.unobserve(textarea));
     body.replaceChildren(...state.rules.filter((r) => r.kind === kind).map(ruleRow));
     const n = state.rules.filter((r) => r.kind === kind && r.enabled).length;
     $(`#tabs [data-tab=${kind}]`).dataset.count = n;

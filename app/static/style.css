@@ -190,13 +190,19 @@ label.inline { display: inline-flex; gap: 6px; align-items: center; color: var(-
 input[type=radio] { accent-color: var(--accent); margin: 0; }
 
 .add-form, .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
-.add-form textarea[name=target] { flex: 2 1 240px; }
+.add-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+.add-controls { display: grid; gap: 8px; min-width: 0; }
+.add-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.add-network { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 8px; }
+.add-controls input, .add-controls select { width: 100%; min-width: 0; }
+.add-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 32px; }
+.add-actions button { margin-left: auto; min-height: 32px; }
+.add-actions label.inline { font-size: 12px; }
+.add-form textarea[name=target] { width: 100%; min-height: 64px; }
 textarea[name=target] {
   height: 32px; min-height: 32px; min-width: 160px;
-  resize: both; overflow: auto; vertical-align: top;
+  resize: none; overflow: hidden; vertical-align: top;
 }
-.add-form input[name=name], .add-form input[name=comment] { flex: 1 1 160px; }
-.add-form input[name=ports] { flex: 0 1 150px; }
 .toolbar input[type=search] { flex: 1 1 240px; }
 .toolbar .stat, #log-count { font: 12px var(--mono); }
 
@@ -361,3 +367,20 @@ td input.short { width: 100%; margin: 6px 0 0; }
   #tab-logs .table-wrap { max-height: none; overflow: visible; }
   .add-form > input, .add-form > textarea, .toolbar > input { min-width: 0; max-width: 100%; }
 }
+
+@media (max-width: 560px) {
+  .add-form { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Firewall keeps its original single, wrapping row of controls. */
+.rule-ui[data-kind=tcp] .add-form { display: flex; flex-wrap: wrap; align-items: center; }
+.rule-ui[data-kind=tcp] .add-controls,
+.rule-ui[data-kind=tcp] .add-fields,
+.rule-ui[data-kind=tcp] .add-network,
+.rule-ui[data-kind=tcp] .add-actions { display: contents; }
+.rule-ui[data-kind=tcp] .add-form textarea[name=target] { flex: 2 1 240px; width: auto; min-height: 32px; }
+.rule-ui[data-kind=tcp] .add-form input[name=name],
+.rule-ui[data-kind=tcp] .add-form input[name=comment] { flex: 1 1 160px; width: auto; }
+.rule-ui[data-kind=tcp] .add-form input[name=ports] { flex: 0 1 150px; width: auto; }
+.rule-ui[data-kind=tcp] .add-form select { width: auto; }
+.rule-ui[data-kind=tcp] .add-form button { margin-left: 0; }

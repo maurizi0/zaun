@@ -156,13 +156,21 @@
 
 <template id="rule-ui-tpl">
   <form class="add-form">
-    <textarea name="target" placeholder="target" rows="1" required></textarea>
-    <input name="ports" class="tcp-only" placeholder="ports, e.g. 3306">
-    <select name="proto" class="tcp-only"><option>tcp</option><option>udp</option></select>
-    <input name="name" placeholder="rule name (optional)" pattern="[A-Za-z0-9._\-]{1,48}">
-    <input name="comment" placeholder="comment (optional)">
-    <label class="inline allow-only"><span class="switch"><input type="checkbox" name="allow_websockets"><span></span></span> Allow WebSockets</label>
-    <button type="submit">add + apply</button>
+    <textarea name="target" placeholder="target" rows="2" required></textarea>
+    <div class="add-controls">
+      <div class="add-fields">
+        <input name="name" placeholder="rule name (optional)" aria-label="Rule name" pattern="[A-Za-z0-9._\-]{1,48}">
+        <input name="comment" placeholder="comment (optional)" aria-label="Comment">
+      </div>
+      <div class="add-network tcp-only">
+        <input name="ports" placeholder="ports, e.g. 3306" aria-label="Ports">
+        <select name="proto" aria-label="Protocol"><option>tcp</option><option>udp</option></select>
+      </div>
+      <div class="add-actions">
+        <label class="inline allow-only"><span class="switch"><input type="checkbox" name="allow_websockets"><span></span></span> Allow WebSockets</label>
+        <button type="submit">add + apply</button>
+      </div>
+    </div>
   </form>
   <div class="table-wrap">
     <table class="rules">

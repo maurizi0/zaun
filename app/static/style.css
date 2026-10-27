@@ -299,3 +299,65 @@ pre.code { max-height: 440px; overflow: auto; border: 1px solid var(--line); }
 @media (max-width: 560px) {
   .upstream-fields { grid-template-columns: minmax(0, 1fr); }
 }
+
+.targets .target { display: block; }
+.row-actions { display: inline-flex; align-items: center; justify-content: flex-end; }
+
+/* Header edges resize columns without changing the table's quiet styling. */
+th { padding-right: 18px; }
+.column-resizer {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 10px;
+  cursor: col-resize; touch-action: none;
+}
+.column-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.resizing-columns, .resizing-columns * { cursor: col-resize !important; user-select: none !important; }
+/* Keep controls inside columns even after resizing them. */
+td input, td textarea, td select { min-width: 0; max-width: 100%; }
+td textarea[name=target] { min-width: 0; }
+td.nowrap:has(select) { white-space: normal; }
+td input.short { width: 100%; margin: 6px 0 0; }
+
+@media (max-width: 900px) {
+  .table-wrap { border-top: 0; overflow: visible; }
+  table, table.logs { display: block; width: 100% !important; min-width: 0; }
+  /* Retain column headers for assistive technology. */
+  thead {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .column-resizer { display: none; }
+  tbody, tfoot { display: block; }
+  tbody tr, tfoot tr {
+    display: block; margin-bottom: 8px; padding: 8px 12px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface);
+  }
+  table td, table.rules td, table.logs td, table.logs td:first-child {
+    display: grid; grid-template-columns: 88px minmax(0, 1fr); column-gap: 10px;
+    width: auto; padding: 3px 0; border: 0; text-align: left;
+    white-space: normal; font-size: 12px; line-height: 18px; overflow-wrap: anywhere;
+  }
+  td[data-label]::before {
+    content: attr(data-label); color: var(--muted); font: 10.5px/18px var(--mono);
+    letter-spacing: .02em; text-transform: none; text-decoration: none;
+  }
+  /* Multiple targets remain together in the value column. */
+  td[data-label] > * { grid-column: 2; min-width: 0; }
+  td[data-label]::before { grid-column: 1; grid-row: 1; }
+  table.rules td.c-act { padding-top: 6px; }
+  td.c-act .row-actions { justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+  td.c-act button.link {
+    padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 4px;
+    color: var(--fg-2); background: var(--surface);
+  }
+  td.c-act button.link:hover { border-color: var(--accent); color: var(--accent); }
+  td.c-act button.link.danger:hover, td.c-act button.link.danger[data-armed] { color: var(--bad); border-color: var(--bad); }
+  .targets .target { display: inline; }
+  .targets .target + .target::before { content: ", "; color: var(--muted); }
+  tr.editing td.c-on { display: none; }
+  tr.editing td input, tr.editing td textarea, tr.editing td select { width: 100%; }
+  tfoot .default-row { background: var(--sunken); }
+  tfoot .default-row td { display: block; padding: 2px 0; }
+  tfoot .default-row td:empty { display: none; }
+  #tab-logs .table-wrap { max-height: none; overflow: visible; }
+  .add-form > input, .add-form > textarea, .toolbar > input { min-width: 0; max-width: 100%; }
+}

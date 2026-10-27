@@ -84,6 +84,73 @@ function renderStatus() {
 
 // ------------------------------------------------------------------ rule tables
 
+// Labels also identify fields when narrow tables become stacked tiles.
+function labelRow(tr, labels) {
+  [...tr.cells].forEach((cell, i) => {
+    cell.dataset.label = labels[i];
+    for (const control of $$("input, textarea, select", cell)) {
+      if (!control.hasAttribute("aria-label")) control.setAttribute("aria-label", labels[i]);
+    }
+  });
+}
+
+function ruleLabels(kind) {
+  return ["On", "Name", "Target(s)", ...(kind === "allow" ? ["WebSockets"] : []),
+    ...(kind === "tcp" ? ["Proto/Ports"] : []), "Comment", "Actions"];
+}
+
+function setupTableResizing() {
+  for (const table of $$("table")) {
+    const headers = $$("thead th", table);
+    headers.slice(0, -1).forEach((header, index) => {
+      const neighbor = headers[index + 1];
+      const handle = document.createElement("span");
+      handle.className = "column-resizer";
+      handle.tabIndex = 0;
+      handle.setAttribute("role", "separator");
+      handle.setAttribute("aria-orientation", "vertical");
+      handle.setAttribute("aria-label", `Resize ${header.textContent.trim() || "Actions"} column`);
+      handle.title = "Drag to resize; use arrow keys for fine adjustment";
+      const freeze = () => {
+        const total = table.getBoundingClientRect().width;
+        const widths = headers.map((h) => h.getBoundingClientRect().width);
+        headers.forEach((h, i) => { h.style.width = `${widths[i] / total * 100}%`; });
+        return { width: widths[index], adjacent: widths[index + 1], total };
+      };
+      const resize = ({ width, adjacent, total }, delta) => {
+        // Move the shared boundary; never increase the table's total width.
+        const change = Math.max(Math.min(0, 48 - width), Math.min(delta, Math.max(0, adjacent - 48)));
+        header.style.width = `${(width + change) / total * 100}%`;
+        neighbor.style.width = `${(adjacent - change) / total * 100}%`;
+        handle.setAttribute("aria-valuenow", Math.round(width + change));
+      };
+      handle.addEventListener("pointerdown", (ev) => {
+        if (ev.button !== 0) return;
+        ev.preventDefault();
+        const sizes = freeze();
+        const start = ev.clientX;
+        handle.setPointerCapture(ev.pointerId);
+        document.documentElement.classList.add("resizing-columns");
+        const move = (event) => resize(sizes, event.clientX - start);
+        const stop = () => {
+          handle.removeEventListener("pointermove", move);
+          handle.removeEventListener("lostpointercapture", stop);
+          document.documentElement.classList.remove("resizing-columns");
+        };
+        handle.addEventListener("pointermove", move);
+        handle.addEventListener("lostpointercapture", stop);
+      });
+      handle.addEventListener("keydown", (ev) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(ev.key)) return;
+        ev.preventDefault();
+        resize(freeze(),
+          (ev.key === "ArrowRight" ? 1 : -1) * (ev.shiftKey ? 32 : 8));
+      });
+      header.appendChild(handle);
+    });
+  }
+}
+
 function setupRuleUIs() {
   const tpl = $("#rule-ui-tpl");
   for (const host of $$(".rule-ui")) {
@@ -112,11 +179,12 @@ function ruleRow(r) {
   tr.innerHTML = `
     <td class="c-on"><label class="switch"><input type="checkbox" ${r.enabled ? "checked" : ""}><span></span></label></td>
     <td class="mono">${esc(r.name)}</td>
-    <td class="mono">${r.kind === "tcp" ? esc(r.target) : r.target.split(",").map((target) => `<div>${esc(target.trim())}</div>`).join("")}</td>
+    <td class="mono">${r.kind === "tcp" ? esc(r.target) : `<span class="targets">${r.target.split(",").map((target) => `<span class="target">${esc(target.trim())}</span>`).join("")}</span>`}</td>
     ${r.kind === "allow" ? `<td class="c-ws"><span class="ws-check ${r.allow_websockets ? "allowed" : ""}" role="img" aria-label="WebSockets ${r.allow_websockets ? "allowed" : "denied"}" title="WebSockets ${r.allow_websockets ? "allowed" : "denied"}">${r.allow_websockets ? "✓" : "—"}</span></td>` : ""}
     ${r.kind === "tcp" ? `<td class="mono">${esc(r.proto)}/${esc(r.ports)}</td>` : ""}
     <td class="muted">${esc(r.comment)}</td>
-    <td class="c-act"><button class="link edit">edit</button><button class="link danger del">delete</button></td>`;
+    <td class="c-act"><span class="row-actions"><button class="link edit">edit</button><button class="link danger del">delete</button></span></td>`;
+  labelRow(tr, ruleLabels(r.kind));
   $("input[type=checkbox]", tr).addEventListener("change", (ev) => mutate("PUT", `/api/rules/${r.id}`, { enabled: ev.target.checked }));
   $(".edit", tr).addEventListener("click", () => editRow(tr, r));
   const del = $(".del", tr);
@@ -139,7 +207,8 @@ function editRow(tr, r) {
     ${r.kind === "allow" ? `<td class="c-ws"><label class="switch"><input type="checkbox" name="allow_websockets" aria-label="Allow WebSockets" ${r.allow_websockets ? "checked" : ""}><span></span></label></td>` : ""}
     ${r.kind === "tcp" ? `<td class="nowrap"><select name="proto"><option ${r.proto === "tcp" ? "selected" : ""}>tcp</option><option ${r.proto === "udp" ? "selected" : ""}>udp</option></select>${input("ports", r.ports, "short")}</td>` : ""}
     <td>${input("comment", r.comment)}</td>
-    <td class="c-act"><button class="link save">save</button><button class="link cancel">cancel</button></td>`;
+    <td class="c-act"><span class="row-actions"><button class="link save">save</button><button class="link cancel">cancel</button></span></td>`;
+  labelRow(tr, ruleLabels(r.kind));
   const val = (n) => $(`[name=${n}]`, tr)?.value.trim();
   const save = () => {
     const body = { name: val("name"), target: val("target"), comment: val("comment") };
@@ -320,6 +389,7 @@ function logRow(e) {
     <td class="mono path">${esc(e.path)}</td>
     <td class="mono">${esc(e.status)}</td>
     <td class="mono muted">${esc(e.client)}</td>`;
+  labelRow(tr, ["Date", "Verdict", "Rule", "Method", "Host", "Path", "Status", "Client"]);
   return tr;
 }
 
@@ -397,6 +467,7 @@ setTheme(document.documentElement.dataset.theme || "auto");
 // ------------------------------------------------------------------ boot
 
 setupRuleUIs();
+setupTableResizing();
 refresh();
 startLogs();
 setInterval(refresh, 10000);

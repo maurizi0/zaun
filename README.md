@@ -2,7 +2,9 @@
 
 Zaun controls which network destinations AI agents can reach, with a web UI for managing access rules and viewing traffic. Run it alongside agents in a Podman pod or on a Debian gateway serving agents elsewhere on your network.
 
-> **Screenshot placeholder** — web UI screenshot coming soon.
+This project is mainly vibe coded. 
+
+![Zaun Proxy Tab](zaun.png)
 
 ## Features
 
@@ -28,7 +30,7 @@ Both modes use an explicit HTTP/HTTPS proxy. Agents must trust Zaun's CA so it c
 - **FastAPI** serves the UI and REST API. Rule changes are validated before applying them; nftables updates use an atomic transaction. Squid and ulogd2 logs feed the live log view.
 - **Supervisor** runs Squid, logging and the UI together. Gateway mode runs the app as root; container mode gives the proxy `NET_ADMIN`. Container mode exempts proxy traffic using cgroups where available, with a weaker UID fallback.
 
-For rule syntax, API endpoints, command-line management and development commands, see the [technical reference](docs/reference.md).
+Contributor commands, policy details and API notes are in [AGENTS.md](AGENTS.md).
 
 ## Configuration (env)
 

@@ -35,11 +35,10 @@ sed 's|/data/ca/|/var/lib/zaun/ca/|g' \
 install -m 644 "$repo/rootfs/usr/share/squid-langpack/templates/ERR_AGENT_DENIED" \
   /usr/share/squid-langpack/templates/ERR_AGENT_DENIED
 install -m 755 "$repo/rootfs/usr/local/bin/entrypoint.sh" /usr/local/bin/zaun-entrypoint
-install -m 755 "$repo/scripts/prepare-gateway.sh" /usr/local/bin/zaun-prepare-gateway
 if [ ! -e /etc/zaun/zaun.env ]; then
-  install -m 600 "$repo/examples/gateway.env" /etc/zaun/zaun.env
+  install -m 600 "$repo/examples/gateway-mode/gateway.env" /etc/zaun/zaun.env
 fi
-install -m 644 "$repo/examples/zaun.service" /etc/systemd/system/zaun.service
+install -m 644 "$repo/examples/gateway-mode/zaun.service" /etc/systemd/system/zaun.service
 systemctl daemon-reload
-echo "Installed. Follow README gateway setup before starting zaun.service."
+echo "Installed. Follow examples/gateway-mode/README.md before starting zaun.service."
 echo "The distro squid/supervisor/ulogd services must not run alongside Zaun's supervisor."

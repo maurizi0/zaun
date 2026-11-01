@@ -433,14 +433,15 @@ async function copyLogText(value) {
     }
   } catch {
     showError("Unable to copy to clipboard.");
+    return false;
   }
+  return true;
 }
 
 function logRow(e) {
   const d = new Date(e.ts);
   const tr = document.createElement("tr");
   tr.className = e.verdict === "DENY" ? "deny" : "allow";
-  tr.title = `${e.url}\n${e.detail || ""}`;
   tr.innerHTML = `
     <td class="nowrap mono muted">${fmtTime(d)}</td>
     <td class="mono verdict">${e.verdict === "DENY" ? "deny" : "allow"}</td>
@@ -451,29 +452,30 @@ function logRow(e) {
     <td class="mono">${esc(e.status)}</td>
     <td class="mono muted">${esc(e.client)}</td>`;
   labelRow(tr, ["Date", "Verdict", "Rule", "Method", "Host", "Path", "Status", "Client"]);
-  for (const [cell, value, label] of [
-    [tr.cells[4], e.host, "host"],
-    [tr.cells[5], e.url, "full URL"],
-  ]) {
-    cell.title = "";
-    if (typeof value === "string" && value) {
-      cell.classList.add("copy-url");
-      cell.tabIndex = 0;
-      cell.setAttribute("role", "button");
-      cell.setAttribute("aria-label", `Copy ${label}: ${value}`);
-      const indicator = document.createElement("span");
-      indicator.className = "copy-indicator";
-      indicator.setAttribute("aria-hidden", "true");
-      indicator.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><rect x="3.5" y="3.5" width="9" height="11" rx="1"/><rect x="5.5" y="1.5" width="5" height="4" rx="1"/></svg>`;
-      cell.appendChild(indicator);
-      cell.addEventListener("click", () => copyLogText(value));
-      cell.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          copyLogText(value);
-        }
-      });
-    }
+  if (typeof e.url === "string" && e.url) {
+    tr.classList.add("copy-url");
+    tr.tabIndex = 0;
+    tr.setAttribute("aria-label", `Copy full URL: ${e.url}`);
+    const indicator = document.createElement("span");
+    indicator.className = "copy-indicator";
+    indicator.setAttribute("aria-hidden", "true");
+    indicator.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><rect x="3.5" y="3.5" width="9" height="11" rx="1"/><rect x="5.5" y="1.5" width="5" height="4" rx="1"/></svg>`;
+    tr.lastElementChild.appendChild(indicator);
+    let copiedTimer;
+    const copy = async () => {
+      if (await copyLogText(e.url)) {
+        tr.classList.add("copied");
+        clearTimeout(copiedTimer);
+        copiedTimer = setTimeout(() => tr.classList.remove("copied"), 2000);
+      }
+    };
+    tr.addEventListener("click", copy);
+    tr.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        copy();
+      }
+    });
   }
   return tr;
 }

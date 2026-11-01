@@ -80,7 +80,7 @@
     </div>
     <div class="table-wrap">
       <table class="logs">
-        <thead><tr><th class="c-date">Date</th><th class="c-verdict">Verdict</th><th>Rule</th><th class="c-method">Method</th><th class="c-host">Host</th><th class="c-path">Path</th><th class="c-status">Status</th><th class="c-client">Client</th></tr></thead>
+        <thead><tr><th class="c-date" style="width: 14.75%;">Date</th><th class="c-verdict" style="width: 5.75%;">Verdict</th><th style="width: 15.25%;">Rule</th><th class="c-method" style="width: 7.74861%;">Method</th><th class="c-host" style="width: 11.1667%;">Host</th><th class="c-path" style="width: 30.8347%;">Path</th><th class="c-status" style="width: 4.41667%;">Status</th><th class="c-client" style="width: 10.0833%;">Client</th></tr></thead>
         <tbody id="log-body"></tbody>
       </table>
     </div>
@@ -156,6 +156,27 @@
     <pre id="gen-nft" class="code"></pre>
   </section>
 </main>
+
+<template id="allow-headers-tpl">
+  <tr>
+    <th class="c-on" style="width: 5%;">On</th>
+    <th style="width: 19%;">Name</th>
+    <th style="width: 50%;">Target(s)</th>
+    <th class="allow-only c-ws" title="WebSockets" style="width: 5%;">WS</th>
+    <th style="width: 10%;">Comment</th>
+    <th class="c-act" style="width: 11%;"></th>
+  </tr>
+</template>
+
+<template id="deny-headers-tpl">
+  <tr>
+    <th class="c-on" style="width: 5%;">On</th>
+    <th style="width: 19%;">Name</th>
+    <th style="width: 50%;">Target(s)</th>
+    <th style="width: 15%;">Comment</th>
+    <th class="c-act" style="width: 11%;"></th>
+  </tr>
+</template>
 
 <template id="rule-ui-tpl">
   <form class="add-form">

@@ -243,6 +243,14 @@ table.logs .c-status { width: 80px; white-space: nowrap; }
 table.logs .c-host { width: 16%; }
 table.logs .c-path { width: 25%; }
 table.logs .c-client { width: 140px; }
+table.logs .copy-url { cursor: pointer; position: relative; }
+table.logs .copy-url:hover, table.logs .copy-url:focus-visible { background: var(--accent-soft); outline: 1px solid var(--accent); outline-offset: -1px; }
+table.logs .copy-url[data-copy-feedback]::after {
+  content: attr(data-copy-feedback); position: absolute; right: 4px; top: 2px;
+  padding: 2px 6px; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line-strong); border-radius: 3px; font-size: 11px;
+  pointer-events: none; z-index: 2;
+}
 table.logs .verdict { font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
 table.logs tr.allow .verdict { color: var(--ok); }
 table.logs tr.deny .verdict { color: var(--bad); }

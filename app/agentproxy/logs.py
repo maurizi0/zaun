@@ -199,3 +199,9 @@ class LogHub:
 def recent(hub: LogHub, limit: int) -> list[dict]:
     items = sorted(hub.buffer, key=lambda e: e["epoch"])
     return items[-limit:]
+
+
+def download_snapshot(hub: LogHub) -> str:
+    """Export every retained event with all original fields and value types."""
+    snapshot = sorted(list(hub.buffer), key=lambda e: e["epoch"], reverse=True)
+    return json.dumps({"entries": snapshot}, ensure_ascii=True) + "\n"

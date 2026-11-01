@@ -271,8 +271,8 @@ table.logs tr.deny:hover { background: var(--bad-soft); filter: brightness(.98);
 .kv dt { color: var(--muted); font: 11px var(--mono); text-transform: uppercase; letter-spacing: .1em; padding-top: 2px; }
 .kv dd { margin: 0; word-break: break-all; font-family: var(--mono); font-size: 12.5px; }
 textarea#ca-pem { width: 100%; max-width: 720px; resize: vertical; background: var(--sunken); color: var(--fg-2); line-height: 1.55; }
-.snippets { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
-.snippets > div { background: var(--bg); padding: 16px; min-width: 0; }
+.snippets { max-width: 880px; }
+.snippets > div { padding: 16px; min-width: 0; border: 1px solid var(--line); margin-top: -1px; }
 .snippets pre { white-space: pre-wrap; word-break: break-all; background: transparent; padding: 0; color: var(--fg-2); }
 pre { background: var(--sunken); padding: 14px 16px; border-radius: 4px; overflow-x: auto; margin: 0; line-height: 1.6; color: var(--fg-2); }
 pre.code { max-height: 440px; overflow: auto; border: 1px solid var(--line); }

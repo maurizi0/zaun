@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from . import apply as applier
 from . import config as cfg
 from . import upstream
-from .logs import LogHub, parse_nflog, parse_squid, recent
+from .logs import LogHub, download_snapshot, parse_nflog, parse_squid, recent
 from .rules import DEFAULT_RULE, Rule, RuleError, validate_rule
 
 logging.basicConfig(level=logging.INFO, format="webui: %(levelname)s %(name)s: %(message)s")
@@ -310,6 +310,17 @@ async def ca_pem():
 @app.get("/api/logs")
 async def logs(limit: int = 500):
     return recent(state.hub, max(1, min(limit, cfg.LOG_BUFFER)))
+
+
+@app.get("/api/logs/download")
+async def logs_download():
+    # BasicAuth protects this route. Also fail closed if the app was started
+    # without credentials rather than inheriting its unauthenticated fallback.
+    if not UI_PASSWORD:
+        raise HTTPException(503, "configure UI credentials before downloading logs")
+    return Response(download_snapshot(state.hub), media_type="application/json",
+                    headers={"Content-Disposition": 'attachment; filename="zaun-access-logs.json"',
+                             "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @app.get("/api/logs/stream")

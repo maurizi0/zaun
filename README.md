@@ -11,7 +11,7 @@ This project is mainly vibe coded.
 - Allow or deny HTTP/HTTPS destinations by host, URL path and port.
 - Allow direct TCP/UDP connections to specific hosts or networks.
 - Block unmatched traffic by default; deny rules take priority.
-- Apply rule changes live and view proxy and firewall logs together.
+- Apply rule changes live, view proxy and firewall logs together, and download recent buffered logs as JSON.
 - Enable WebSockets per rule, chain an upstream proxy, and import/export configuration.
 
 ## Modes

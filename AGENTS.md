@@ -72,7 +72,9 @@ Basic authentication protects endpoints except `/ca.pem`, `/ca.crt` and `/health
 
 - `GET /api/state`, `POST /api/rules`, `PUT|DELETE /api/rules/{id}`, `POST /api/reapply`.
 - `GET /api/export`, `POST /api/import?mode=replace|merge`, `GET /api/generated`, `GET /api/ca`.
-- `GET /api/logs?limit=N`, `GET /api/logs/stream` (SSE).
+- `GET /api/logs?limit=N`, `GET /api/logs/stream` (SSE), `GET /api/logs/download` (authenticated JSON attachment).
+
+Log downloads include recent server-buffered access events, newest first, independently of UI filters/clear. They preserve every event field and original JSON value type, including URL, detail, ID and epoch, without download-time filtering or redaction, and set no-store/nosniff headers. Export every retained buffer entry without separate record, byte or field-length limits; normal log-buffer retention still applies. Keep the download unavailable when UI credentials are unset; never accept a user-provided filesystem path or attachment filename. Event paths and client addresses can still be sensitive.
 
 `scripts/manage-targets.py` uses only Python's standard library. It supports `list`, `add`, `import`, `disable`, `enable` and `remove`:
 

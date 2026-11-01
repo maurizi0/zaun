@@ -125,7 +125,14 @@ Without configured IPv6 agent networks, forwarded IPv6 on the agent interface is
 
 - **Logs:** `sudo journalctl -u zaun.service` for Supervisor; `/var/log/agent-proxy/{squid,cachelog,ulogd,webui}.log` for child processes (10 MB each, three backups).
 - **Backups:** securely back up `/var/lib/zaun`, including rules, credentials and the CA private key.
-- **Updates:** rerun the installer and restart `zaun.service`; configuration and CA state are retained.
+- **Updates:** back up `/var/lib/zaun` and `/etc/zaun/zaun.env`, then run from the repository root:
+  ```bash
+  sudo systemctl stop zaun.service
+  git pull --ff-only
+  sudo bash scripts/install-gateway.sh
+  sudo systemctl start zaun.service
+  ```
+  Saved configuration and CA state are retained; installed application and service configuration files are overwritten.
 - **Boot guard:** blocks new agent forwarding until Zaun applies the saved policy. Regenerate, review and reinstall it after changing interfaces, subnets or NAT settings.
 - **Firewall reloads:** stopping nftables can flush rules; reloading restores the boot guard. Restart Zaun after an intentional reload. Stopping Zaun leaves its last rules loaded.
 

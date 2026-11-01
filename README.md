@@ -64,4 +64,5 @@ Upstream proxy and TLS verification settings can also be changed in the UI. Save
 - Gateway agents need a controlled route through Zaun without an alternative internet path. Protect services on the gateway separately; its forwarding rules do not cover traffic addressed to the server itself.
 - HTTPS inspection decrypts agent traffic. Protect the CA private key, state backups and configuration exports; exports may include upstream credentials. Keep upstream TLS verification enabled.
 - Prefer narrow allow rules for sensitive paths. Deny rules do not normalize percent-encoded paths, so an encoded URL may evade a path deny.
+- Deny targets can use `*/admin*` to block paths starting with `/admin` on any host, or `*/*admin*` to match `admin` anywhere in the path. Matching is case-insensitive and deny rules win over allows. Targets without explicit ports match default HTTP/HTTPS ports only.
 - Removing a firewall rule blocks new connections; established connections remain open until they close. Query strings are stripped from proxy logs, but URL paths can still contain sensitive information.

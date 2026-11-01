@@ -60,6 +60,22 @@ class PatternTest(unittest.TestCase):
 
 
 class RuleTest(unittest.TestCase):
+    def test_any_host_path_deny(self):
+        deny = validate_rule({"kind": "deny", "target": "*/admin*"}, [])
+        allow = Rule("allow1", "allow", "site", "example.com")
+        conf = squid_rules_conf([allow, deny], ["127.0.0.1"])
+        prefix = f"acl {deny.id}_url url_regex -i "
+        regex = next(line[len(prefix):] for line in conf.splitlines() if line.startswith(prefix))
+        for url in ("http://example.com/admin", "https://other.org/ADMIN/users?x=1"):
+            self.assertIsNotNone(re.search(regex, url, re.I))
+        for url in ("https://example.com/public", "https://example.com/nested/admin",
+                    "https://example.com:8443/admin", "https://example.com/%61dmin"):
+            self.assertIsNone(re.search(regex, url, re.I))
+        self.assertNotIn(f"acl {deny.id}_chost", conf)
+        self.assertLess(conf.index(f"http_access deny !CONNECT {deny.id}_url"),
+                        conf.index("http_access allow !CONNECT !ap_upgrade allow1_url"))
+        self.assertTrue(matches("*/*admin*", "https://example.com/nested/admin/users"))
+
     def test_ports(self):
         self.assertEqual(normalize_ports(" 3306, 8000-8100 "), "3306,8000-8100")
         for bad in ("", "0", "70000", "10-5", "a"):

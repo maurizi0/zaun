@@ -52,7 +52,8 @@
   <section id="tab-deny" class="tab">
     <h2>Deny rules</h2>
     <p class="help">Deny rules are evaluated before <em>every</em> allow rule and always win, e.g. <code>http://test.io/*</code>, <code>*.host.io/admin/*</code>, <code>evil.host.io</code>.
-      Separate multiple targets with commas to create a group with one On switch. Path matching for deny rules is case-insensitive.</p>
+      Use <code>*/admin*</code> to block paths starting with /admin on any host, or <code>*/*admin*</code> to match admin anywhere in the path. Without an explicit port, targets match default HTTP/HTTPS ports only.
+      Separate multiple targets with commas to create a group with one On switch. Path matching for deny rules is case-insensitive; percent-encoded paths are not normalized.</p>
     <div class="rule-ui" data-kind="deny"></div>
   </section>
 

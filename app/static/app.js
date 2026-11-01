@@ -411,7 +411,7 @@ const pad = (n, w = 2) => String(n).padStart(w, "0");
 const fmtTime = (d) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
 
-async function copyLogText(cell, value) {
+async function copyLogText(value) {
   try {
     try {
       await navigator.clipboard.writeText(value);
@@ -431,16 +431,6 @@ async function copyLogText(cell, value) {
         previousFocus?.focus({ preventScroll: true });
       }
     }
-    let indicator = $(".copy-indicator", cell);
-    if (!indicator) {
-      indicator = document.createElement("span");
-      indicator.className = "copy-indicator";
-      indicator.setAttribute("role", "status");
-      indicator.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg><span class="copy-announcement">Copied</span>`;
-      cell.appendChild(indicator);
-    }
-    clearTimeout(cell.copyIndicatorTimer);
-    cell.copyIndicatorTimer = setTimeout(() => indicator.remove(), 2000);
   } catch {
     showError("Unable to copy to clipboard.");
   }
@@ -471,11 +461,16 @@ function logRow(e) {
       cell.tabIndex = 0;
       cell.setAttribute("role", "button");
       cell.setAttribute("aria-label", `Copy ${label}: ${value}`);
-      cell.addEventListener("click", () => copyLogText(cell, value));
+      const indicator = document.createElement("span");
+      indicator.className = "copy-indicator";
+      indicator.setAttribute("aria-hidden", "true");
+      indicator.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><rect x="3.5" y="3.5" width="9" height="11" rx="1"/><rect x="5.5" y="1.5" width="5" height="4" rx="1"/></svg>`;
+      cell.appendChild(indicator);
+      cell.addEventListener("click", () => copyLogText(value));
       cell.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          copyLogText(cell, value);
+          copyLogText(value);
         }
       });
     }

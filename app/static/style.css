@@ -243,15 +243,15 @@ table.logs .c-status { width: 80px; white-space: nowrap; }
 table.logs .c-host { width: 16%; }
 table.logs .c-path { width: 25%; }
 table.logs .c-client { width: 140px; }
-table.logs .copy-url { cursor: pointer; position: relative; }
+table.logs .copy-url { cursor: pointer; position: relative; padding-right: 26px; }
 table.logs .copy-url:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
 table.logs .copy-indicator {
-  position: absolute; top: 4px; right: 4px; display: inline-flex;
-  padding: 2px; color: var(--muted); background: var(--bg); pointer-events: none;
+  position: absolute; top: 6px; right: 6px; display: inline-flex;
+  color: var(--muted); pointer-events: none; opacity: 0;
 }
-.copy-announcement {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+table.logs .copy-url:hover .copy-indicator,
+table.logs .copy-url:focus-visible .copy-indicator {
+  opacity: 1;
 }
 table.logs .verdict { font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
 table.logs tr.allow .verdict { color: var(--ok); }

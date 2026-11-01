@@ -1,6 +1,7 @@
 """Run once by the entrypoint before squid starts: render config and lock down egress."""
 import logging
 import sys
+from pathlib import Path
 
 from . import config as cfg
 from .apply import ApplyError, apply
@@ -10,6 +11,17 @@ logging.basicConfig(level=logging.INFO, format="bootstrap: %(message)s")
 
 
 def main() -> int:
+    if cfg.GATEWAY:
+        for interface in (cfg.GATEWAY.agent_interface, cfg.GATEWAY.uplink_interface):
+            if not (Path("/sys/class/net") / interface).exists():
+                print(f"bootstrap: gateway interface {interface!r} does not exist in this network namespace",
+                      file=sys.stderr)
+                return 1
+        for version, setting in ((4, "/proc/sys/net/ipv4/ip_forward"),
+                                 (6, "/proc/sys/net/ipv6/conf/all/forwarding")):
+            if any((":" in n) == (version == 6) for n in cfg.GATEWAY.networks):
+                if Path(setting).read_text().strip() != "1":
+                    logging.warning("IPv%d forwarding is disabled; enable it after installing the boot guard", version)
     try:
         rules = cfg.load_rules()
         settings = cfg.load_settings()

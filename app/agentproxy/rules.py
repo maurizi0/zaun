@@ -14,6 +14,7 @@ import re
 import secrets
 import time
 from dataclasses import asdict, dataclass, field
+from .firewall import Gateway
 
 KINDS = ("allow", "deny", "tcp")
 PROTOS = ("tcp", "udp")
@@ -348,13 +349,16 @@ NFT_TABLE = "agentproxy"
 NFLOG_GROUP = 1
 
 
-def nft_ruleset(rules: list[Rule], resolved: dict[str, list[str]], proxy_matches: list[str]) -> str:
-    """Complete, atomically loadable nft script for the pod's output path.
+def nft_ruleset(rules: list[Rule], resolved: dict[str, list[str]], proxy_matches: list[str],
+                *, gateway: Gateway | None = None) -> str:
+    """Complete, atomically loadable script for container output or gateway forwarding.
 
     `resolved` maps hostname targets to their current addresses.
     `proxy_matches` are nft match expressions identifying the proxy's own sockets
     (which are exempt: squid has to reach the internet).
     """
+    if gateway:
+        return gateway_ruleset(rules, resolved, gateway)
     out = [
         f"destroy table inet {NFT_TABLE}",
         f"table inet {NFT_TABLE} {{",
@@ -364,6 +368,13 @@ def nft_ruleset(rules: list[Rule], resolved: dict[str, list[str]], proxy_matches
         "    ct state established,related accept",
     ]
     out += [f'    {m} accept comment "proxy egress"' for m in proxy_matches]
+    out += _nft_allow_rules(rules, resolved)
+    out += _nft_reject_rules() + ["  }", "}", ""]
+    return "\n".join(out)
+
+
+def _nft_allow_rules(rules: list[Rule], resolved: dict[str, list[str]]) -> list[str]:
+    out = []
     for r in rules:
         if not r.enabled or r.kind != "tcp":
             continue
@@ -382,12 +393,44 @@ def nft_ruleset(rules: list[Rule], resolved: dict[str, list[str]], proxy_matches
                     f"    {fam} daddr {{ {', '.join(lst)} }} {r.proto} dport {{ {ports} }} "
                     f'ct state new log group {NFLOG_GROUP} prefix "{prefix}" accept'
                 )
-    out += [
+    return out
+
+
+def _nft_reject_rules() -> list[str]:
+    return [
         f'    ct state new limit rate 50/second burst 100 packets log group {NFLOG_GROUP} prefix "DENY|{DEFAULT_RULE}"',
         "    meta l4proto tcp reject with tcp reset",
         "    reject",
-        "  }",
-        "}",
-        "",
     ]
-    return "\n".join(out)
+
+
+def gateway_ruleset(rules: list[Rule], resolved: dict[str, list[str]], gateway: Gateway) -> str:
+    """Guard both directions on a dedicated agent interface, including IPv6.
+
+    Source checks precede conntrack. Other host tables and INPUT/OUTPUT are untouched.
+    """
+    lan, wan = gateway.agent_interface, gateway.uplink_interface
+    networks = {v: [n for n in gateway.networks if ipaddress.ip_network(n).version == v]
+                for v in (4, 6)}
+    out = [f"destroy table inet {NFT_TABLE}", f"table inet {NFT_TABLE} {{",
+           "  chain forward {", "    type filter hook forward priority filter; policy accept;",
+           f'    iifname "{lan}" jump from_agents',
+           f'    oifname "{lan}" jump to_agents', "  }", "  chain from_agents {"]
+    for version, family in ((4, "ip"), (6, "ip6")):
+        if networks[version]:
+            out.append(f'    oifname "{wan}" {family} saddr {{ {", ".join(networks[version])} }} jump agent_egress')
+    out += _nft_reject_rules() + ["  }", "  chain agent_egress {",
+                                "    ct state invalid drop",
+                                "    ct state established,related accept"]
+    out += _nft_allow_rules(rules, resolved) + _nft_reject_rules()
+    out += ["  }", "  chain to_agents {"]
+    for version, family in ((4, "ip"), (6, "ip6")):
+        if networks[version]:
+            out.append(f'    iifname "{wan}" {family} daddr {{ {", ".join(networks[version])} }} ct state established,related accept')
+    out += _nft_reject_rules() + ["  }"]
+    if gateway.masquerade:
+        out += ["  chain postrouting {",
+                "    type nat hook postrouting priority srcnat; policy accept;",
+                f'    iifname "{lan}" oifname "{wan}" ip saddr {{ {", ".join(networks[4])} }} masquerade',
+                "  }"]
+    return "\n".join(out + ["}", ""])

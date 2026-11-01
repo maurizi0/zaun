@@ -151,6 +151,11 @@ def _state_doc() -> dict:
         "apply": state.last_apply,
         "squid_running": applier.squid_running(),
         "firewall_enforced": cfg.FIREWALL_ENFORCE,
+        "firewall_mode": cfg.FIREWALL_MODE,
+        "gateway": ({"agent_interface": cfg.GATEWAY.agent_interface,
+                     "uplink_interface": cfg.GATEWAY.uplink_interface,
+                     "networks": list(cfg.GATEWAY.networks),
+                     "masquerade": cfg.GATEWAY.masquerade} if cfg.GATEWAY else None),
         "settings": {k: v for k, v in state.settings.items() if k != "upstream_proxy_password"},
         "upstream_proxy_password_set": bool(state.settings.get("upstream_proxy_password")),
     }

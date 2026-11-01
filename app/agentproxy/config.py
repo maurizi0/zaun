@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .rules import Rule, RuleError, validate_rule
 from . import upstream
+from .firewall import deployment
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 RUN_DIR = Path(os.environ.get("RUN_DIR", "/run/agent-proxy"))
@@ -24,12 +25,15 @@ NFLOG_LOG = LOG_DIR / "firewall.json"
 
 SQUID_UID = int(os.environ.get("SQUID_UID", "31280"))
 FIREWALL_ENFORCE = os.environ.get("FIREWALL_ENFORCE", "1") not in ("0", "false", "no")
+FIREWALL_MODE, GATEWAY = deployment(os.environ)
 VERIFY_UPSTREAM_TLS = os.environ.get("VERIFY_UPSTREAM_TLS", "1") not in ("0", "false", "no")
 DNS_REFRESH_SECONDS = int(os.environ.get("DNS_REFRESH_SECONDS", "300"))
 ALLOWED_CLIENTS = os.environ.get(
     "ALLOWED_CLIENTS",
     "127.0.0.0/8 ::1 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 fc00::/7",
 ).split()
+if GATEWAY and "ALLOWED_CLIENTS" not in os.environ:
+    ALLOWED_CLIENTS = list(GATEWAY.networks)
 LOG_BUFFER = int(os.environ.get("LOG_BUFFER", "5000"))
 LOG_MAX_BYTES = int(os.environ.get("LOG_MAX_BYTES", str(50 * 1024 * 1024)))
 

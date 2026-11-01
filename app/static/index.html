@@ -58,9 +58,9 @@
 
   <section id="tab-tcp" class="tab">
     <h2>Firewall</h2>
-    <p class="help">Direct (non-HTTP) connections from the pod, enforced with nftables — e.g. <code>42.42.42.42</code> port <code>3306</code>.
+    <p class="help">Direct (non-HTTP) connections, enforced with nftables — e.g. <code>42.42.42.42</code> port <code>3306</code>.
       Targets may be an IP, a CIDR or a hostname (re-resolved periodically). Ports: <code>3306</code>, <code>5432,6379</code>, <code>8000-8100</code>.
-      Everything else leaving the pod is rejected, except the proxy's own traffic.</p>
+      <span id="firewall-scope">Connections leaving the pod are rejected unless allowed, except the proxy's own traffic.</span></p>
     <div class="rule-ui" data-kind="tcp"></div>
   </section>
 

@@ -11,7 +11,15 @@ set -euo pipefail
 : "${CA_CN:=Agent Proxy CA}"
 export DATA_DIR UI_LISTEN UI_PORT UI_USER FIREWALL_ENFORCE VERIFY_UPSTREAM_TLS
 
+# Reject invalid deployment settings before creating files or touching nftables.
+python3 -c 'from agentproxy import config'
+
 mkdir -p "$DATA_DIR/ca" /run/agent-proxy /var/log/agent-proxy /var/spool/squid /var/lib/agent-proxy
+# Native systemd installs use a restrictive umask. Squid drops privileges and must
+# still traverse the state directory to read its CA and the runtime config directory.
+chgrp agentproxy "$DATA_DIR"
+chmod g+x "$DATA_DIR"
+chmod 0755 /run/agent-proxy
 chown agentproxy:agentproxy /var/log/agent-proxy /var/spool/squid /var/lib/agent-proxy
 chmod 0700 "$DATA_DIR/ca"
 
@@ -45,7 +53,7 @@ fi
 # --- firewall / log plumbing
 if [ "$FIREWALL_ENFORCE" = "1" ] || [ "$FIREWALL_ENFORCE" = "true" ]; then
   if ! nft list tables >/dev/null 2>&1; then
-    echo "entrypoint: FATAL: cannot manage nftables. Run with --cap-add=NET_ADMIN" >&2
+    echo "entrypoint: FATAL: cannot manage nftables. Run as root on the gateway or with --cap-add=NET_ADMIN in a container" >&2
     echo "entrypoint:        (or FIREWALL_ENFORCE=0 to run squid-only, without L4 enforcement)" >&2
     exit 1
   fi

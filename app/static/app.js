@@ -60,7 +60,10 @@ function setPill(el, text, cls) {
 
 function renderStatus() {
   setPill($("#squid-status"), state.squid_running ? "squid up" : "squid down", state.squid_running ? "ok" : "bad");
-  setPill($("#fw-status"), state.firewall_enforced ? "nft enforced" : "nft off", state.firewall_enforced ? "ok" : "warn");
+  setPill($("#fw-status"), state.firewall_enforced ? `nft ${state.firewall_mode || "container"}` : "nft off", state.firewall_enforced ? "ok" : "warn");
+  $("#firewall-scope").textContent = state.firewall_mode === "gateway"
+    ? `Forwarded traffic from ${state.gateway.agent_interface} to ${state.gateway.uplink_interface}. Other agent forwarding is rejected. Host traffic is managed separately.`
+    : "Connections leaving the pod are rejected unless allowed, except the proxy's own traffic.";
   const verifyTls = state.settings?.verify_upstream_tls !== false;
   $("#tls-status").hidden = verifyTls;
   setPill($("#tls-status"), "upstream tls unverified", "warn");

@@ -1,0 +1,19 @@
+[Unit]
+Description=Zaun gateway proxy and firewall
+Wants=network-online.target
+Requires=nftables.service
+After=nftables.service network-online.target
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/etc/zaun/zaun.env
+ExecStart=/usr/local/bin/zaun-entrypoint
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillMode=control-group
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

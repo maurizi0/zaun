@@ -101,7 +101,7 @@ def render(rules: list[Rule], settings: dict,
     if resolved is None:
         resolved = resolve_all(rules)
     return (squid_rules_conf(rules, cfg.ALLOWED_CLIENTS, settings["verify_upstream_tls"]) + upstream.squid_conf(settings),
-            nft_ruleset(rules, resolved, proxy_matches()))
+            nft_ruleset(rules, resolved, [] if cfg.GATEWAY else proxy_matches(), gateway=cfg.GATEWAY))
 
 
 def apply_nft(nft_text: str) -> None:

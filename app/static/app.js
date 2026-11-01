@@ -411,14 +411,14 @@ const pad = (n, w = 2) => String(n).padStart(w, "0");
 const fmtTime = (d) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
 
-async function copyLogUrl(cell, url) {
+async function copyLogText(value) {
   try {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(value);
     } catch {
       // Clipboard API is unavailable on ordinary HTTP gateway addresses.
       const input = document.createElement("textarea");
-      input.value = url;
+      input.value = value;
       input.style.position = "fixed";
       input.style.opacity = "0";
       document.body.appendChild(input);
@@ -431,12 +431,9 @@ async function copyLogUrl(cell, url) {
         previousFocus?.focus({ preventScroll: true });
       }
     }
-    cell.dataset.copyFeedback = "Copied";
   } catch {
-    cell.dataset.copyFeedback = "Copy failed";
+    showError("Unable to copy to clipboard.");
   }
-  clearTimeout(cell.copyFeedbackTimer);
-  cell.copyFeedbackTimer = setTimeout(() => delete cell.dataset.copyFeedback, 1500);
 }
 
 function logRow(e) {
@@ -454,18 +451,21 @@ function logRow(e) {
     <td class="mono">${esc(e.status)}</td>
     <td class="mono muted">${esc(e.client)}</td>`;
   labelRow(tr, ["Date", "Verdict", "Rule", "Method", "Host", "Path", "Status", "Client"]);
-  if (typeof e.url === "string" && e.url) {
-    for (const cell of [tr.cells[4], tr.cells[5]]) {
+  for (const [cell, value, label] of [
+    [tr.cells[4], e.host, "host"],
+    [tr.cells[5], e.url, "full URL"],
+  ]) {
+    cell.title = "";
+    if (typeof value === "string" && value) {
       cell.classList.add("copy-url");
       cell.tabIndex = 0;
       cell.setAttribute("role", "button");
-      cell.setAttribute("aria-label", `Copy full URL: ${e.url}`);
-      cell.title = `Click to copy full URL\n${e.url}`;
-      cell.addEventListener("click", () => copyLogUrl(cell, e.url));
+      cell.setAttribute("aria-label", `Copy ${label}: ${value}`);
+      cell.addEventListener("click", () => copyLogText(value));
       cell.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          copyLogUrl(cell, e.url);
+          copyLogText(value);
         }
       });
     }

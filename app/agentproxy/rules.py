@@ -135,15 +135,18 @@ class HttpPattern:
 
     def url_regex(self) -> str:
         """Regex matched against squid's absolute request URL (scheme://host[:port]/path?query)."""
-        scheme_re = self.scheme or "https?"
         host_re = glob_to_ere(self.host, "[^/:@]*")
-        if self.port is None:
-            defaults = sorted({str(DEFAULT_PORTS[s]) for s in self.schemes})
-            port_re = f"(:({'|'.join(defaults)}))?"
-        elif self.port in {DEFAULT_PORTS[s] for s in self.schemes}:
-            port_re = f"(:{self.port})?"
-        else:
-            port_re = f":{self.port}"
+        if self.host == "*":
+            # A whole-host wildcard includes bracketed IPv6 literals. Keep
+            # brackets/colons out of the DNS branch so ports cannot be swallowed.
+            host_re = r"(\[[0-9A-Fa-f:.]+\]|[^][/:@?#]+)"
+        origins = []
+        for scheme in self.schemes:
+            port = self.port or DEFAULT_PORTS[scheme]
+            # Squid may omit a default port, but only for this scheme.
+            port_re = f"(:{port})?" if port == DEFAULT_PORTS[scheme] else f":{port}"
+            origins.append(f"{scheme}://{host_re}{port_re}")
+        origin_re = "(" + "|".join(origins) + ")"
         if self.path is None:
             path_re = "([/?].*)?$"
         else:
@@ -151,7 +154,7 @@ class HttpPattern:
             if not self.path.endswith("*"):
                 path_re += "([?].*)?"
             path_re += "$"
-        return f"^{scheme_re}://{host_re}{port_re}{path_re}"
+        return f"^{origin_re}{path_re}"
 
     def connect_host_regex(self) -> str:
         host = self.host.strip("[]")

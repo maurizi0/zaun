@@ -53,6 +53,21 @@ class PatternTest(unittest.TestCase):
         self.assertFalse(parse_pattern("http://x.io").applies_to_connect(for_deny=False))
         self.assertTrue(parse_pattern("x.io").applies_to_connect(for_deny=True))
 
+    def test_any_host_ipv6_boundaries(self):
+        for authority in ("example.com", "192.0.2.1", "[2001:db8::1]", "[2001:DB8::1]",
+                          "[::ffff:192.0.2.1]"):
+            for scheme, port in (("http", 80), ("https", 443)):
+                with self.subTest(authority=authority, scheme=scheme):
+                    self.assertTrue(matches("*/admin*", f"{scheme}://{authority}/admin"))
+                    self.assertTrue(matches("*/admin*", f"{scheme}://{authority}:{port}/admin"))
+        for authority in ("", "[2001:db8::1", "2001:db8::1]", "2001:db8::1",
+                          "[2001:db8::1].evil", "[2001:db8::1]@evil.example",
+                          "user@[2001:db8::1]", "[2001:db8::1]:8443", "[2001:db8::1]:80",
+                          "example.com:8443", "example.com?redirect=", "example.com#"):
+            with self.subTest(authority=authority):
+                self.assertFalse(matches("*/admin*", f"https://{authority}/admin"))
+        self.assertFalse(matches("*.example.com/admin*", "https://[2001:db8::1]/admin"))
+
     def test_invalid(self):
         for bad in ("", "ftp://x.io", "x io", "a..b", "http://", "x.io:99999"):
             with self.assertRaises(RuleError, msg=bad):

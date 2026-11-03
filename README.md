@@ -11,7 +11,7 @@ This project is mainly vibe coded.
 - Allow or deny HTTP/HTTPS destinations by host, URL path and port.
 - Allow direct TCP/UDP connections to specific hosts or networks.
 - Block unmatched traffic by default; deny rules take priority.
-- Apply rule changes live, view proxy and firewall logs together, and download recent buffered logs as JSON.
+- Apply rule changes live, view proxy and firewall logs together, and download active and rotated raw logs as a compressed archive.
 - Enable WebSockets per rule, chain an upstream proxy, and import/export configuration.
 
 ## Modes
@@ -53,6 +53,7 @@ The example guides provide ready-to-edit configuration. These are the applicatio
 | `DNS_REFRESH_SECONDS` | `300` | Refresh hostname-based firewall targets. |
 | `CA_CN` | `Agent Proxy CA` | Name used when generating the interception CA. |
 | `LOG_MAX_BYTES` | 50 MB | Access/firewall log rotation size. |
+| `LOG_BACKUPS` | 20 in gateway mode, 1 otherwise | Number of access/firewall log rotations retained. |
 | `DATA_DIR` | `/data` | Persistent rules, CA and generated password. The native gateway uses `/var/lib/zaun`. |
 
 Upstream proxy and TLS verification settings can also be changed in the UI. Saved settings override their environment defaults on restart. Back up the state directory to retain your rules and CA.

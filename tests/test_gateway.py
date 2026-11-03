@@ -86,6 +86,20 @@ class GatewayTest(unittest.TestCase):
         result = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True)
         self.assertEqual(result.stdout.strip(), "10.20.0.10/32")
 
+    def test_gateway_retains_extensive_log_history_by_default(self):
+        env = {k: v for k, v in os.environ.items() if k not in ("LOG_BACKUPS", "FIREWALL_ENFORCE")}
+        env.update(PYTHONPATH=str(Path(__file__).resolve().parent.parent / "app"),
+                   FIREWALL_MODE="gateway", GATEWAY_AGENT_INTERFACE="agents0",
+                   GATEWAY_UPLINK_INTERFACE="wan0", GATEWAY_AGENT_NETWORKS="10.20.0.0/24")
+        code = "from agentproxy.config import LOG_BACKUPS; print(LOG_BACKUPS)"
+        result = subprocess.run([sys.executable, "-c", code], env=env,
+                                capture_output=True, text=True, check=True)
+        self.assertEqual(result.stdout.strip(), "20")
+        env["LOG_BACKUPS"] = "7"
+        result = subprocess.run([sys.executable, "-c", code], env=env,
+                                capture_output=True, text=True, check=True)
+        self.assertEqual(result.stdout.strip(), "7")
+
     def test_invalid_deployments(self):
         base = {"FIREWALL_MODE": "gateway", "GATEWAY_AGENT_INTERFACE": "agents0",
                 "GATEWAY_UPLINK_INTERFACE": "wan0", "GATEWAY_AGENT_NETWORKS": "10.20.0.0/24"}

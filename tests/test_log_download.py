@@ -1,52 +1,72 @@
-"""Access-log export completeness, exact values and attachment security."""
-import json
+"""Raw access/firewall log archive completeness and attachment security."""
+import asyncio
+import io
 from pathlib import Path
 import sys
+import tarfile
+import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "app"))
-from agentproxy.logs import LogHub, download_snapshot
+from agentproxy.logs import LogHub, _rotate_file
 
 
-class LogDownloadTest(unittest.TestCase):
-    def test_export_preserves_all_fields_and_types_without_mutating_events(self):
-        hub = LogHub()
-        event = {"epoch": 1, "source": "proxy", "host": "alice:secret@example.com?token=secret",
-                 "path": "/api?key=secret#private", "url": "https://alice:secret@example.com/api?key=secret",
-                 "detail": "secret diagnostic", "password": "secret", "rule": '<script>alert("x")</script>',
-                 "client": "=HYPERLINK(\"bad\")"}
-        hub.publish(event.copy())
-        hub.publish({"epoch": 2, "host": "second.example", "path": "/ok"})
-        text = download_snapshot(hub)
-        result = json.loads(text)
-        self.assertEqual(result["entries"][0]["host"], "second.example")
-        row = result["entries"][1]
-        self.assertEqual(row, {**event, "id": 1})
-        self.assertIsInstance(row["epoch"], int)
-        self.assertEqual(hub.buffer[0], {**event, "id": 1})
+async def archive_bytes(hub, paths):
+    stream = await hub.open_log_archive(paths)
+    return b"".join([chunk async for chunk in stream])
 
-    def test_empty_and_large_buffers(self):
-        hub = LogHub()
-        self.assertEqual(json.loads(download_snapshot(hub)), {"entries": []})
-        # Use a larger test buffer than the configured default.
-        from collections import deque
-        hub.buffer = deque({"epoch": i, "path": "/x"} for i in range(5010))
-        result = json.loads(download_snapshot(hub))
-        self.assertEqual(len(result["entries"]), 5010)
-        hub.buffer = deque({"epoch": i, "path": "/" + "x" * 10000} for i in range(1000))
-        text = download_snapshot(hub)
-        self.assertGreater(len(text), 8 * 1024 * 1024)
-        result = json.loads(text)
-        self.assertEqual(len(result["entries"]), 1000)
-        self.assertEqual(len(result["entries"][0]["path"]), 10001)
 
-    def test_preserves_long_fields_and_nested_metadata(self):
-        hub = LogHub()
-        event = {"epoch": 0, "host": "password" * 1000 + "@example.com",
-                 "metadata": {"enabled": True, "count": 3, "extra": None, "tags": ["one", "two"]}}
-        hub.publish(event.copy())
-        row = json.loads(download_snapshot(hub))["entries"][0]
-        self.assertEqual(row, {**event, "id": 1})
+def archive_contents(data):
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+        return {member.name: archive.extractfile(member).read() for member in archive.getmembers()}
+
+
+class LogRotationTest(unittest.TestCase):
+    def test_rotation_keeps_configured_number_of_complete_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "access.log"
+            path.write_bytes(b"current\n")
+            for index in range(1, 5):
+                (Path(directory) / f"access.log.{index}").write_bytes(f"old-{index}\n".encode())
+
+            _rotate_file(path, 3)
+
+            self.assertFalse(path.exists())
+            self.assertEqual((Path(directory) / "access.log.1").read_bytes(), b"current\n")
+            self.assertEqual((Path(directory) / "access.log.2").read_bytes(), b"old-1\n")
+            self.assertEqual((Path(directory) / "access.log.3").read_bytes(), b"old-2\n")
+            self.assertFalse((Path(directory) / "access.log.4").exists())
+
+
+class LogDownloadTest(unittest.IsolatedAsyncioTestCase):
+    async def test_archive_contains_active_logs_and_every_numbered_rotation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            access = root / "access.log"
+            firewall = root / "firewall.json"
+            expected = {
+                "access.log": b"proxy-current\n",
+                "access.log.1": b"proxy-previous\n",
+                "access.log.2": b"proxy-oldest\n",
+                "firewall.json": b'{"event":"current"}\n',
+                "firewall.json.1": b'{"event":"previous"}\n',
+            }
+            for name, content in expected.items():
+                (root / name).write_bytes(content)
+            (root / "cache.log").write_bytes(b"must not be included\n")
+            (root / "access.log.notes").write_bytes(b"must not be included\n")
+
+            data = await archive_bytes(LogHub(), [access, firewall])
+
+            self.assertEqual(archive_contents(data), expected)
+
+    async def test_archive_streams_files_larger_than_one_chunk_without_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "access.log"
+            content = bytes(range(256)) * 1024
+            path.write_bytes(content)
+            data = await archive_bytes(LogHub(), [path])
+            self.assertEqual(archive_contents(data), {"access.log": content})
 
 
 # These exercise the real ASGI auth middleware and route when app dependencies
@@ -70,9 +90,14 @@ class LogDownloadAPITest(unittest.IsolatedAsyncioTestCase):
                      "raw_path": b"/api/logs/download", "query_string": b"file=/etc/passwd&filename=unsafe.html",
                      "headers": headers, "client": ("127.0.0.1", 1234), "server": ("test", 80), "root_path": ""}
             messages = []
+            request_sent = False
 
             async def receive():
-                return {"type": "http.request", "body": b"", "more_body": False}
+                nonlocal request_sent
+                if not request_sent:
+                    request_sent = True
+                    return {"type": "http.request", "body": b"", "more_body": False}
+                await asyncio.Event().wait()
 
             async def send(message):
                 messages.append(message)
@@ -82,16 +107,27 @@ class LogDownloadAPITest(unittest.IsolatedAsyncioTestCase):
             body = b"".join(m.get("body", b"") for m in messages if m["type"] == "http.response.body")
             return start["status"], dict(start["headers"]), body
 
-        with patch.object(main, "UI_PASSWORD", "download-test-password"), patch.object(main, "UI_USER", "admin"):
-            self.assertEqual((await request())[0], 401)
-            self.assertEqual((await request("admin:wrong"))[0], 401)
-            status, headers, body = await request("admin:download-test-password")
-            self.assertEqual(status, 200)
-            self.assertEqual(headers[b"content-disposition"], b'attachment; filename="zaun-access-logs.json"')
-            self.assertEqual(headers[b"cache-control"], b"no-store")
-            self.assertEqual(headers[b"x-content-type-options"], b"nosniff")
-            self.assertIn(b"application/json", headers[b"content-type"])
-            self.assertIn("entries", json.loads(body))
+        with tempfile.TemporaryDirectory() as directory:
+            access = Path(directory) / "access.log"
+            firewall = Path(directory) / "firewall.json"
+            access.write_bytes(b"proxy log\n")
+            firewall.write_bytes(b'{"firewall":"log"}\n')
+            with patch.object(main, "UI_PASSWORD", "download-test-password"), \
+                    patch.object(main, "UI_USER", "admin"), \
+                    patch.object(main.cfg, "SQUID_LOG", access), \
+                    patch.object(main.cfg, "NFLOG_LOG", firewall):
+                self.assertEqual((await request())[0], 401)
+                self.assertEqual((await request("admin:wrong"))[0], 401)
+                status, headers, body = await request("admin:download-test-password")
+                self.assertEqual(status, 200)
+                self.assertEqual(headers[b"content-disposition"], b'attachment; filename="zaun-logs.tar.gz"')
+                self.assertEqual(headers[b"cache-control"], b"no-store")
+                self.assertEqual(headers[b"x-content-type-options"], b"nosniff")
+                self.assertIn(b"application/gzip", headers[b"content-type"])
+                self.assertEqual(archive_contents(body), {
+                    "access.log": b"proxy log\n",
+                    "firewall.json": b'{"firewall":"log"}\n',
+                })
         with patch.object(main, "UI_PASSWORD", ""):
             self.assertEqual((await request())[0], 503)
 

@@ -36,6 +36,7 @@ if GATEWAY and "ALLOWED_CLIENTS" not in os.environ:
     ALLOWED_CLIENTS = list(GATEWAY.networks)
 LOG_BUFFER = int(os.environ.get("LOG_BUFFER", "5000"))
 LOG_MAX_BYTES = int(os.environ.get("LOG_MAX_BYTES", str(50 * 1024 * 1024)))
+LOG_BACKUPS = int(os.environ.get("LOG_BACKUPS", "20" if GATEWAY else "1"))
 
 CONFIG_VERSION = 1
 # runtime settings; the env values are the defaults for configs that don't set them

@@ -123,7 +123,7 @@ Without configured IPv6 agent networks, forwarded IPv6 on the agent interface is
 
 ## Operation
 
-- **Logs:** `sudo journalctl -u zaun.service` for Supervisor; `/var/log/agent-proxy/{squid,cachelog,ulogd,webui}.log` for child processes (10 MB each, three backups).
+- **Logs:** `sudo journalctl -u zaun.service` for Supervisor; `/var/log/agent-proxy/{squid,cachelog,ulogd,webui}.log` for child processes (10 MB each, three backups). Access and firewall event logs rotate at 50 MB and retain 20 backups by default. The authenticated UI download is a compressed archive of both active event logs and all retained rotations.
 - **Backups:** securely back up `/var/lib/zaun`, including rules, credentials and the CA private key.
 - **Updates:** back up `/var/lib/zaun` and `/etc/zaun/zaun.env`, then run from the repository root:
   ```bash

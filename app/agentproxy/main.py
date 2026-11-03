@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from . import apply as applier
 from . import config as cfg
 from . import upstream
-from .logs import LogHub, download_snapshot, parse_nflog, parse_squid, recent
+from .logs import LogHub, parse_nflog, parse_squid, recent
 from .rules import DEFAULT_RULE, Rule, RuleError, validate_rule
 
 logging.basicConfig(level=logging.INFO, format="webui: %(levelname)s %(name)s: %(message)s")
@@ -318,9 +318,10 @@ async def logs_download():
     # without credentials rather than inheriting its unauthenticated fallback.
     if not UI_PASSWORD:
         raise HTTPException(503, "configure UI credentials before downloading logs")
-    return Response(download_snapshot(state.hub), media_type="application/json",
-                    headers={"Content-Disposition": 'attachment; filename="zaun-access-logs.json"',
-                             "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+    archive = await state.hub.open_log_archive([cfg.SQUID_LOG, cfg.NFLOG_LOG])
+    return StreamingResponse(archive, media_type="application/gzip",
+                             headers={"Content-Disposition": 'attachment; filename="zaun-logs.tar.gz"',
+                                      "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @app.get("/api/logs/stream")

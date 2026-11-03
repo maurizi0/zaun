@@ -2,19 +2,24 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
 import logging
 import os
+import stat
 import subprocess
+import tarfile
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import AsyncIterator
 from urllib.parse import urlsplit
 
 from . import config as cfg
 
 log = logging.getLogger("agentproxy.logs")
 PROTO_NAMES = {6: "TCP", 17: "UDP", 1: "ICMP", 58: "ICMPv6"}
+ARCHIVE_CHUNK_SIZE = 64 * 1024
 
 
 def _iso(ts: float) -> str:
@@ -122,6 +127,7 @@ class LogHub:
         self.buffer: deque[dict] = deque(maxlen=cfg.LOG_BUFFER)
         self.subscribers: set[asyncio.Queue] = set()
         self.seq = 0
+        self.rotation_lock = asyncio.Lock()
 
     def publish(self, entry: dict) -> None:
         self.seq += 1
@@ -169,9 +175,12 @@ class LogHub:
                 if st is None or st.st_ino != inode or st.st_size < f.tell():
                     f.close()
                     f = None
-                elif st.st_size > cfg.LOG_MAX_BYTES:
-                    os.replace(path, path.with_suffix(path.suffix + ".1"))
-                    subprocess.run(rotate_cmd, capture_output=True)
+                elif cfg.LOG_MAX_BYTES > 0 and st.st_size > cfg.LOG_MAX_BYTES:
+                    async with self.rotation_lock:
+                        current = path.stat() if path.exists() else None
+                        if current and current.st_ino == inode and current.st_size > cfg.LOG_MAX_BYTES:
+                            _rotate_file(path, cfg.LOG_BACKUPS)
+                            subprocess.run(rotate_cmd, capture_output=True)
             except asyncio.CancelledError:
                 raise
             except Exception:  # keep tailing no matter what
@@ -195,13 +204,102 @@ class LogHub:
             if e:
                 self.publish(e)
 
+    async def open_log_archive(self, paths: list[Path]) -> AsyncIterator[bytes]:
+        """Snapshot active and rotated raw logs and return a compressed tar stream."""
+        snapshots = []
+        try:
+            async with self.rotation_lock:
+                for path in paths:
+                    for candidate in _retained_log_files(path):
+                        try:
+                            fd = os.open(candidate, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+                        except OSError as e:
+                            if e.errno not in (errno.ENOENT, errno.ELOOP):
+                                raise
+                            continue
+                        try:
+                            metadata = os.fstat(fd)
+                        except BaseException:
+                            os.close(fd)
+                            raise
+                        if not stat.S_ISREG(metadata.st_mode):
+                            os.close(fd)
+                            continue
+                        snapshots.append((fd, candidate.name, metadata))
+        except BaseException:
+            for fd, _, _ in snapshots:
+                os.close(fd)
+            raise
+        return _archive_stream(snapshots)
+
+
+def _backup_path(path: Path, index: int) -> Path:
+    return path.with_suffix(path.suffix + f".{index}")
+
+
+def _retained_log_files(path: Path) -> list[Path]:
+    files = [path] if path.is_file() else []
+    prefix = path.name + "."
+    rotations = []
+    for candidate in path.parent.glob(prefix + "*"):
+        suffix = candidate.name[len(prefix):]
+        if suffix.isdigit() and candidate.is_file():
+            rotations.append((int(suffix), candidate))
+    files.extend(candidate for _, candidate in sorted(rotations))
+    return files
+
+
+def _rotate_file(path: Path, backups: int) -> None:
+    """Rotate one log, keeping exactly ``backups`` numbered generations."""
+    if backups < 1:
+        path.unlink(missing_ok=True)
+        return
+    prefix = path.name + "."
+    for candidate in path.parent.glob(prefix + "*"):
+        suffix = candidate.name[len(prefix):]
+        if suffix.isdigit() and int(suffix) >= backups:
+            candidate.unlink(missing_ok=True)
+    for index in range(backups - 1, 0, -1):
+        source = _backup_path(path, index)
+        destination = _backup_path(path, index + 1)
+        if source.exists():
+            os.replace(source, destination)
+        else:
+            destination.unlink(missing_ok=True)
+    os.replace(path, _backup_path(path, 1))
+
+
+def _write_archive(write_fd: int, snapshots: list[tuple[int, str, os.stat_result]]) -> None:
+    try:
+        with os.fdopen(write_fd, "wb") as output:
+            with tarfile.open(fileobj=output, mode="w|gz", format=tarfile.PAX_FORMAT) as archive:
+                while snapshots:
+                    fd, name, metadata = snapshots.pop(0)
+                    with os.fdopen(fd, "rb") as source:
+                        info = tarfile.TarInfo(name)
+                        info.size = metadata.st_size
+                        info.mtime = metadata.st_mtime
+                        info.mode = metadata.st_mode & 0o777
+                        archive.addfile(info, source)
+    finally:
+        for fd, _, _ in snapshots:
+            os.close(fd)
+
+
+async def _archive_stream(snapshots: list[tuple[int, str, os.stat_result]]) -> AsyncIterator[bytes]:
+    read_fd, write_fd = os.pipe()
+    writer = asyncio.create_task(asyncio.to_thread(_write_archive, write_fd, snapshots))
+    try:
+        while chunk := await asyncio.to_thread(os.read, read_fd, ARCHIVE_CHUNK_SIZE):
+            yield chunk
+    finally:
+        os.close(read_fd)
+        try:
+            await writer
+        except BrokenPipeError:  # the client disconnected before consuming the archive
+            pass
+
 
 def recent(hub: LogHub, limit: int) -> list[dict]:
     items = sorted(hub.buffer, key=lambda e: e["epoch"])
     return items[-limit:]
-
-
-def download_snapshot(hub: LogHub) -> str:
-    """Export every retained event with all original fields and value types."""
-    snapshot = sorted(list(hub.buffer), key=lambda e: e["epoch"], reverse=True)
-    return json.dumps({"entries": snapshot}, ensure_ascii=True) + "\n"

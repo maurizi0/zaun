@@ -396,3 +396,19 @@ td input.short { width: 100%; margin: 6px 0 0; }
 .rule-ui[data-kind=tcp] .add-form input[name=ports] { flex: 0 1 150px; width: auto; }
 .rule-ui[data-kind=tcp] .add-form select { width: auto; }
 .rule-ui[data-kind=tcp] .add-form button { margin-left: 0; }
+
+/* Initial column widths; resizing updates the CSSOM at runtime. */
+[data-initial-width="initial-width-1"] { width: 14.75%; }
+[data-initial-width="initial-width-2"] { width: 5.75%; }
+[data-initial-width="initial-width-3"] { width: 15.25%; }
+[data-initial-width="initial-width-4"] { width: 7.74861%; }
+[data-initial-width="initial-width-5"] { width: 11.1667%; }
+[data-initial-width="initial-width-6"] { width: 30.8347%; }
+[data-initial-width="initial-width-7"] { width: 4.41667%; }
+[data-initial-width="initial-width-8"] { width: 10.0833%; }
+[data-initial-width="initial-width-9"] { width: 5%; }
+[data-initial-width="initial-width-10"] { width: 19%; }
+[data-initial-width="initial-width-11"] { width: 50%; }
+[data-initial-width="initial-width-12"] { width: 10%; }
+[data-initial-width="initial-width-13"] { width: 11%; }
+[data-initial-width="initial-width-14"] { width: 15%; }

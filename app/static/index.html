@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Zaun Agent Proxy</title>
 <link rel="stylesheet" href="/static/style.css">
-<script>
-  // apply the saved theme before first paint
-  try { const t = localStorage.getItem("agent-proxy-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
-</script>
+<script src="/static/theme.js"></script>
 </head>
 <body>
 <header>
@@ -80,7 +77,7 @@
     </div>
     <div class="table-wrap">
       <table class="logs">
-        <thead><tr><th class="c-date" style="width: 14.75%;">Date</th><th class="c-verdict" style="width: 5.75%;">Verdict</th><th style="width: 15.25%;">Rule</th><th class="c-method" style="width: 7.74861%;">Method</th><th class="c-host" style="width: 11.1667%;">Host</th><th class="c-path" style="width: 30.8347%;">Path</th><th class="c-status" style="width: 4.41667%;">Status</th><th class="c-client" style="width: 10.0833%;">Client</th></tr></thead>
+        <thead><tr><th class="c-date" data-initial-width="initial-width-1">Date</th><th class="c-verdict" data-initial-width="initial-width-2">Verdict</th><th data-initial-width="initial-width-3">Rule</th><th class="c-method" data-initial-width="initial-width-4">Method</th><th class="c-host" data-initial-width="initial-width-5">Host</th><th class="c-path" data-initial-width="initial-width-6">Path</th><th class="c-status" data-initial-width="initial-width-7">Status</th><th class="c-client" data-initial-width="initial-width-8">Client</th></tr></thead>
         <tbody id="log-body"></tbody>
       </table>
     </div>
@@ -159,22 +156,22 @@
 
 <template id="allow-headers-tpl">
   <tr>
-    <th class="c-on" style="width: 5%;">On</th>
-    <th style="width: 19%;">Name</th>
-    <th style="width: 50%;">Target(s)</th>
-    <th class="allow-only c-ws" title="WebSockets" style="width: 5%;">WS</th>
-    <th style="width: 10%;">Comment</th>
-    <th class="c-act" style="width: 11%;"></th>
+    <th class="c-on" data-initial-width="initial-width-9">On</th>
+    <th data-initial-width="initial-width-10">Name</th>
+    <th data-initial-width="initial-width-11">Target(s)</th>
+    <th class="allow-only c-ws" title="WebSockets" data-initial-width="initial-width-9">WS</th>
+    <th data-initial-width="initial-width-12">Comment</th>
+    <th class="c-act" data-initial-width="initial-width-13"></th>
   </tr>
 </template>
 
 <template id="deny-headers-tpl">
   <tr>
-    <th class="c-on" style="width: 5%;">On</th>
-    <th style="width: 19%;">Name</th>
-    <th style="width: 50%;">Target(s)</th>
-    <th style="width: 15%;">Comment</th>
-    <th class="c-act" style="width: 11%;"></th>
+    <th class="c-on" data-initial-width="initial-width-9">On</th>
+    <th data-initial-width="initial-width-10">Name</th>
+    <th data-initial-width="initial-width-11">Target(s)</th>
+    <th data-initial-width="initial-width-14">Comment</th>
+    <th class="c-act" data-initial-width="initial-width-13"></th>
   </tr>
 </template>
 
@@ -198,7 +195,7 @@
   </form>
   <div class="table-wrap">
     <table class="rules">
-      <thead><tr><th class="c-on" style="width: 5%;">On</th><th style="width: 19%;">Name</th><th>Target(s)</th><th class="allow-only c-ws" title="WebSockets">WS</th><th class="tcp-only c-ports">Proto/Ports</th><th>Comment</th><th class="c-act"></th></tr></thead>
+      <thead><tr><th class="c-on" data-initial-width="initial-width-9">On</th><th data-initial-width="initial-width-10">Name</th><th>Target(s)</th><th class="allow-only c-ws" title="WebSockets">WS</th><th class="tcp-only c-ports">Proto/Ports</th><th>Comment</th><th class="c-act"></th></tr></thead>
       <tbody></tbody>
       <tfoot><tr class="default-row"><td class="c-on"><span class="fixed">fixed</span></td><td class="mono">default-deny</td><td colspan="3" class="muted">everything not explicitly allowed is denied (cannot be changed)</td><td></td></tr></tfoot>
     </table>

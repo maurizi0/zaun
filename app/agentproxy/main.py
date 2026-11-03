@@ -32,6 +32,35 @@ UI_PASSWORD = os.environ.get("UI_PASSWORD") or (
 PUBLIC_PATHS = {"/ca.pem", "/ca.crt", "/healthz"}
 
 
+CONTENT_SECURITY_POLICY = (
+    "default-src 'none'; script-src 'self'; script-src-attr 'none'; "
+    "style-src 'self'; style-src-attr 'none'; connect-src 'self'; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
+
+
+class SecurityHeaders:
+    """Add the policy without buffering responses, including SSE and downloads."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                message = dict(message)
+                message["headers"] = list(message.get("headers", [])) + [
+                    (b"content-security-policy", CONTENT_SECURITY_POLICY.encode("ascii")),
+                    (b"x-content-type-options", b"nosniff"),
+                ]
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
 class BasicAuth:
     """Pure ASGI middleware, so streaming responses (SSE) are untouched."""
 
@@ -68,6 +97,7 @@ class State:
 state = State()
 app = FastAPI(title="agent-proxy", docs_url=None, redoc_url=None)
 app.add_middleware(BasicAuth)
+app.add_middleware(SecurityHeaders)
 
 
 async def commit(new_rules: list[Rule], new_settings: dict | None = None) -> dict:

@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="bounds"><rect width="64" height="64" rx="10"/></clipPath>
+    <path id="tile" d="M2 0h7L7 7H0Z"/>
+  </defs>
+  <rect width="64" height="64" rx="10" fill="#14111f"/>
+  <g clip-path="url(#bounds)" fill="#b9aceb">
+    <g transform="translate(-5 -3)">
+    <use href="#tile" transform="translate(-16 -8) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-6 -8) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(4 -8) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(14 -8) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(24 -8) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(34 -8) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(44 -8) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(54 -8) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(64 -8) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(74 -8) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(84 -8) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-18 2) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-8 2) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(2 2) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(12 2) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(22 2) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(32 2) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(42 2) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(52 2) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(62 2) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(72 2) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(82 2) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-20 12) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-10 12) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(0 12) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(10 12) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(20 12) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(30 12) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(40 12) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(50 12) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(60 12) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(70 12) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(80 12) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-22 22) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-12 22) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-2 22) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(8 22) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(18 22) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(28 22) rotate(-3 4.5 3.5)" fill="#f0695f"/>
+    <use href="#tile" transform="translate(38 22) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(48 22) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(58 22) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(68 22) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(78 22) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-24 32) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-14 32) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-4 32) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(6 32) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(16 32) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(26 32) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(36 32) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(46 32) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(56 32) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(66 32) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(76 32) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-26 42) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-16 42) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-6 42) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(4 42) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(14 42) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(24 42) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(34 42) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(44 42) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(54 42) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(64 42) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(74 42) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-28 52) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-18 52) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-8 52) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(2 52) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(12 52) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(22 52) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(32 52) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(42 52) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(52 52) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(62 52) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(72 52) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-30 62) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-20 62) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-10 62) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(0 62) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(10 62) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(20 62) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(30 62) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(40 62) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(50 62) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(60 62) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(70 62) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-32 72) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-22 72) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-12 72) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(-2 72) rotate(3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(8 72) rotate(-3 4.5 3.5)"/>
+    <use href="#tile" transform="translate(18 72) rotate(6 4.5 3.5)"/>
+    <use href="#tile" transform="translate(28 72) rotate(-5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(38 72) rotate(2 4.5 3.5)"/>
+    <use href="#tile" transform="translate(48 72) rotate(5 4.5 3.5)"/>
+    <use href="#tile" transform="translate(58 72) rotate(-7 4.5 3.5)"/>
+    <use href="#tile" transform="translate(68 72) rotate(3 4.5 3.5)"/>
+    </g>
+  </g>
+</svg>

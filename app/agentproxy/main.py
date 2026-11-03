@@ -34,7 +34,7 @@ PUBLIC_PATHS = {"/ca.pem", "/ca.crt", "/healthz"}
 
 CONTENT_SECURITY_POLICY = (
     "default-src 'none'; script-src 'self'; script-src-attr 'none'; "
-    "style-src 'self'; style-src-attr 'none'; connect-src 'self'; "
+    "style-src 'self'; style-src-attr 'none'; img-src 'self'; connect-src 'self'; "
     "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 )
 

@@ -24,7 +24,7 @@ spec:
           add: [NET_ADMIN]
       env:
         - name: VERIFY_UPSTREAM_TLS
-          value: 0
+          value: 1
         - name: UI_PASSWORD
           value: changeme-f641d3a8392bcabe10b2
       ports:

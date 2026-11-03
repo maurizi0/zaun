@@ -134,6 +134,12 @@ async def dns_refresh_loop() -> None:
 
 @app.on_event("startup")
 async def startup() -> None:
+    if not UI_PASSWORD:
+        log.warning(
+            "No UI password configured - UI/API authentication is disabled. "
+            "Set UI_PASSWORD or provide a nonempty %s file to enable authentication.",
+            cfg.DATA_DIR / "ui-password",
+        )
     state.rules = cfg.load_rules()
     state.settings = cfg.load_settings()
     state.last_nft = cfg.NFT_FILE.read_text() if cfg.NFT_FILE.exists() else ""

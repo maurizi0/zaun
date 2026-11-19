@@ -126,14 +126,14 @@ def glob_to_ere(s: str, star: str) -> str:
 class HttpPattern:
     scheme: str | None   # None = http and https
     host: str            # lowercase, may contain '*'
-    port: int | None     # None = default port(s)
+    port: int | None     # None = implicit port scope
     path: str | None     # None = any path
 
     @property
     def schemes(self) -> list[str]:
         return [self.scheme] if self.scheme else ["http", "https"]
 
-    def url_regex(self) -> str:
+    def url_regex(self, *, all_ports: bool = False) -> str:
         """Regex matched against squid's absolute request URL (scheme://host[:port]/path?query)."""
         host_re = glob_to_ere(self.host, "[^][/:@?#]*")
         if self.host == "*":
@@ -145,6 +145,8 @@ class HttpPattern:
             port = self.port or DEFAULT_PORTS[scheme]
             # Squid may omit a default port, but only for this scheme.
             port_re = f"(:{port})?" if port == DEFAULT_PORTS[scheme] else f":{port}"
+            if all_ports:
+                port_re = "(:[0-9]+)?"
             origins.append(f"{scheme}://{host_re}{port_re}")
         origin_re = "(" + "|".join(origins) + ")"
         if self.path is None:
@@ -294,9 +296,10 @@ def squid_rules_conf(rules: list[Rule], allowed_clients: list[str],
             # separate host/port bindings to avoid cross-matching targets.
             aid = r.id if len(targets) == 1 else f"{r.id}_t{index + 1}"
             p = parse_pattern(target)
+            all_ports = r.kind == "deny" and p.scheme is None and p.port is None
             verb = "deny" if r.kind == "deny" else "allow"
             flags = "-i " if r.kind == "deny" else ""
-            acls.append(f"acl {aid}_url url_regex {flags}{p.url_regex()}")
+            acls.append(f"acl {aid}_url url_regex {flags}{p.url_regex(all_ports=all_ports)}")
             if r.kind == "allow" and r.allow_websockets:
                 # At SslBump1, dstdom/port still identify the original CONNECT.
                 # Evaluate every binding, including overlapping rules. A false
@@ -322,7 +325,8 @@ def squid_rules_conf(rules: list[Rule], allowed_clients: list[str],
             access.append(f"http_access {verb} !CONNECT {upgrade_guard}{aid}_url {r.id}_mark")
             if p.applies_to_connect(for_deny=r.kind == "deny"):
                 acls.append(f"acl {aid}_chost dstdom_regex -n -i {p.connect_host_regex()}")
-                acls.append(f"acl {aid}_cport port {p.connect_port}")
+                ports = "1-65535" if all_ports else str(p.connect_port)
+                acls.append(f"acl {aid}_cport port {ports}")
                 bump_guard = "!ap_bumped " if r.kind == "allow" else ""
                 access.append(f"http_access {verb} CONNECT {bump_guard}{aid}_chost {aid}_cport {r.id}_mark")
     # any-of short-circuits before the side effect when the CONNECT does not

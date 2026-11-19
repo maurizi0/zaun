@@ -87,10 +87,11 @@ class RuleTest(unittest.TestCase):
         conf = squid_rules_conf([allow, deny], ["127.0.0.1"])
         prefix = f"acl {deny.id}_url url_regex -i "
         regex = next(line[len(prefix):] for line in conf.splitlines() if line.startswith(prefix))
-        for url in ("http://example.com/admin", "https://other.org/ADMIN/users?x=1"):
+        for url in ("http://example.com/admin", "https://other.org/ADMIN/users?x=1",
+                    "https://example.com:8443/admin"):
             self.assertIsNotNone(re.search(regex, url, re.I))
         for url in ("https://example.com/public", "https://example.com/nested/admin",
-                    "https://example.com:8443/admin", "https://example.com/%61dmin"):
+                    "https://example.com:8443/public", "https://example.com/%61dmin"):
             self.assertIsNone(re.search(regex, url, re.I))
         self.assertNotIn(f"acl {deny.id}_chost", conf)
         self.assertLess(conf.index(f"http_access deny !CONNECT {deny.id}_url"),

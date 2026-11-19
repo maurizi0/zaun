@@ -136,6 +136,12 @@ class SquidContractTest(unittest.TestCase):
                                ("off", ("deny", "default-deny"))]:
             self.assertEqual(p.decide(f"https://{host}.example/"), expected)
 
+    def test_bare_deny_overrides_wildcard_allow_on_explicit_port(self):
+        p = policy([rule("allow", "*.com:8443", "ra"), rule("deny", "evil.com", "rd")])
+        for scheme in ("http", "https"):
+            self.assertEqual(p.decide(f"{scheme}://evil.com:8443/"), ("deny", "rd_shared"))
+            self.assertEqual(p.decide(f"{scheme}://good.com:8443/"), ("allow", "ra_shared"))
+
     def test_connect_bindings_and_order(self):
         conf = squid_rules_conf([rule("allow", "https://one.example:8443/a, http://two.example/b", "ra"),
                                  rule("deny", "https://one.example:8443/admin", "rd"),
@@ -148,7 +154,7 @@ class SquidContractTest(unittest.TestCase):
         ])
         self.assertIn("acl ra_t1_chost dstdom_regex -n -i ^one\\.example$", conf)
         self.assertIn("acl ra_t1_cport port 8443", conf)
-        self.assertIn("acl rb_cport port 443", conf)
+        self.assertIn("acl rb_cport port 1-65535", conf)
 
     # Regressions from policy_bench/BUGS.md: these must pass normally.
     def test_bare_host_rejects_http_on_443(self):
@@ -197,7 +203,8 @@ class SquidContractTest(unittest.TestCase):
                         for path in ("/api", "/api?x=1", "/API", "/api/", "/other"):
                             url = f"{scheme}://{authority}{path}"
                             path_matches = path in ("/api", "/api?x=1") or (kind == "deny" and path == "/API")
-                            matched = (scheme, port or default_port) in pairs and path_matches
+                            all_ports = kind == "deny" and target == "example.com"
+                            matched = (all_ports or (scheme, port or default_port) in pairs) and path_matches
                             expected = (kind, "r1_shared") if matched else (
                                 ("allow", "rf_shared") if kind == "deny" else ("deny", "default-deny"))
                             with self.subTest(target=target, kind=kind, url=url):
@@ -233,7 +240,7 @@ class SquidContractTest(unittest.TestCase):
 
     def test_any_host_deny_preserves_scheme_port_path_and_attribution(self):
         cases = [
-            ("*/admin*", {("http", 80), ("https", 443)}, True),
+            ("*/admin*", {(s, p) for s in ("http", "https") for p in (80, 443, 8443)}, True),
             ("https://*/admin", {("https", 443)}, False),
             ("*:8443/admin*", {("http", 8443), ("https", 8443)}, True),
         ]

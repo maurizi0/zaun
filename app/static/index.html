@@ -50,7 +50,7 @@
   <section id="tab-deny" class="tab">
     <h2>Deny rules</h2>
     <p class="help">Deny rules are evaluated before <em>every</em> allow rule and always win, e.g. <code>http://test.io/*</code>, <code>*.host.io/admin/*</code>, <code>evil.host.io</code>.
-      Use <code>*/admin*</code> to block paths starting with /admin on any host, or <code>*/*admin*</code> to match admin anywhere in the path. Without an explicit port, targets match default HTTP/HTTPS ports only.
+      Use <code>*/admin*</code> to block paths starting with /admin on any host, or <code>*/*admin*</code> to match admin anywhere in the path. A deny target without a scheme or port matches HTTP and HTTPS on every proxy destination port. A scheme alone selects its default port. An explicit port selects only that port.
       Separate multiple targets with commas to create a group with one On switch. Path matching for deny rules is case-insensitive; percent-encoded paths are not normalized.</p>
     <div class="rule-ui" data-kind="deny"></div>
   </section>

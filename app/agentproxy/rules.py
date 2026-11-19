@@ -135,7 +135,7 @@ class HttpPattern:
 
     def url_regex(self) -> str:
         """Regex matched against squid's absolute request URL (scheme://host[:port]/path?query)."""
-        host_re = glob_to_ere(self.host, "[^/:@]*")
+        host_re = glob_to_ere(self.host, "[^][/:@?#]*")
         if self.host == "*":
             # A whole-host wildcard includes bracketed IPv6 literals. Keep
             # brackets/colons out of the DNS branch so ports cannot be swallowed.

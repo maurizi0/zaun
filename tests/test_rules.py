@@ -31,6 +31,12 @@ class PatternTest(unittest.TestCase):
         self.assertFalse(matches("*.host.io", "https://host.io/"))
         self.assertFalse(matches("*.host.io", "https://ahost.io/"))
 
+    def test_partial_wildcard_host_boundaries(self):
+        pattern = "*.example.com"
+        self.assertFalse(matches(pattern, "http://other.test?q=.example.com/"))
+        self.assertFalse(matches(pattern, "http://other.test#.example.com/"))
+        self.assertTrue(matches(pattern, "http://api.example.com/?q=1"))
+
     def test_scheme_and_path(self):
         self.assertTrue(matches("http://test.io", "http://test.io/anything"))
         self.assertFalse(matches("http://test.io", "https://test.io/"))

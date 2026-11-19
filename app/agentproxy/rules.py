@@ -276,6 +276,7 @@ def squid_rules_conf(rules: list[Rule], allowed_clients: list[str],
         "",
         "http_access deny !ap_clients ap_mark_clients",
         "http_access deny to_localhost ap_mark_builtin",
+        "http_access deny CONNECT ap_bumped ap_mark_default",
     ]
     # squid picks the error page from the last ACL on the denying line
     deny_marks = ["ap_mark_clients", "ap_mark_builtin", "ap_mark_default"]
@@ -322,7 +323,8 @@ def squid_rules_conf(rules: list[Rule], allowed_clients: list[str],
             if p.applies_to_connect(for_deny=r.kind == "deny"):
                 acls.append(f"acl {aid}_chost dstdom_regex -n -i {p.connect_host_regex()}")
                 acls.append(f"acl {aid}_cport port {p.connect_port}")
-                access.append(f"http_access {verb} CONNECT {aid}_chost {aid}_cport {r.id}_mark")
+                bump_guard = "!ap_bumped " if r.kind == "allow" else ""
+                access.append(f"http_access {verb} CONNECT {bump_guard}{aid}_chost {aid}_cport {r.id}_mark")
     # any-of short-circuits before the side effect when the CONNECT does not
     # match. Each conditional ACL always returns true, so all-of visits every
     # rule. This runs only at SslBump1, never on the rewritten CONNECT at step 2.

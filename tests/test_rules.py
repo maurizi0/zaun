@@ -150,6 +150,20 @@ class RuleTest(unittest.TestCase):
         self.assertIn('ip6 daddr { fd00::5 } tcp dport { 5432 }', nft)
         self.assertIn("policy drop", nft)
 
+    def test_legacy_allow_only_grants_connect_before_bump(self):
+        rules = cfg.rules_from_export({"rules": [
+            {"id": "legacy", "kind": "allow", "target": "https://testing.io/public"}
+        ]})
+        conf = squid_rules_conf(rules, ["127.0.0.1"])
+        access = [line for line in conf.splitlines() if line.startswith("http_access ")]
+        self.assertEqual(access[:3], [
+            "http_access deny !ap_clients ap_mark_clients",
+            "http_access deny to_localhost ap_mark_builtin",
+            "http_access deny CONNECT ap_bumped ap_mark_default",
+        ])
+        self.assertIn("http_access allow CONNECT !ap_bumped legacy_chost legacy_cport legacy_mark", access)
+        self.assertFalse(rules[0].allow_websockets)
+
     def test_websocket_validation_and_persistence(self):
         data = {"kind": "allow", "target": "https://testing.io/socket/*"}
         self.assertFalse(validate_rule(data, []).allow_websockets)
@@ -197,7 +211,7 @@ class RuleTest(unittest.TestCase):
             self.assertIsNone(re.search(pattern.url_regex(), url), url)
         self.assertIsNotNone(re.search(pattern.url_regex(),
                                       "https://testing.io:8443/socket/a"))
-        self.assertIn("http_access allow CONNECT r2_chost r2_cport", sq)
+        self.assertIn("http_access allow CONNECT !ap_bumped r2_chost r2_cport", sq)
 
     def test_websocket_connection_binding_for_overlapping_rules(self):
         sq = squid_rules_conf([
@@ -230,7 +244,7 @@ class RuleTest(unittest.TestCase):
         for index, target in enumerate(rule.target.split(", "), 1):
             aid = f"rgroup_t{index}"
             self.assertIn(f"acl {aid}_url url_regex {parse_pattern(target).url_regex()}", sq)
-            self.assertIn(f"http_access allow CONNECT {aid}_chost {aid}_cport rgroup_mark", sq)
+            self.assertIn(f"http_access allow CONNECT !ap_bumped {aid}_chost {aid}_cport rgroup_mark", sq)
             self.assertIn(f"websocket allow {aid}_url ap_https ap_bumped {aid}_ws_bound {aid}_ws_name", sq)
             self.assertIn(f"acl {aid}_ws_bound note ap_ws_{aid} true", sq)
         disabled_ws = validate_rule({**rule.to_dict(), "allow_websockets": False}, [], rule_id=rule.id)

@@ -142,8 +142,9 @@ class SquidContractTest(unittest.TestCase):
                                  rule("deny", "blocked.example", "rb")], ["10.20.0.0/24"])
         self.assertEqual([line for line in conf.splitlines() if line.startswith("http_access ") and
                           " CONNECT " in line], [
+            "http_access deny CONNECT ap_bumped ap_mark_default",
             "http_access deny CONNECT rb_chost rb_cport rb_mark",
-            "http_access allow CONNECT ra_t1_chost ra_t1_cport ra_mark",
+            "http_access allow CONNECT !ap_bumped ra_t1_chost ra_t1_cport ra_mark",
         ])
         self.assertIn("acl ra_t1_chost dstdom_regex -n -i ^one\\.example$", conf)
         self.assertIn("acl ra_t1_cport port 8443", conf)
@@ -225,7 +226,7 @@ class SquidContractTest(unittest.TestCase):
             conf = squid_rules_conf(rules, ["10.20.0.0/24"])
             with self.subTest(target=target, port=port):
                 self.assertIn(f"acl rb_cport port {port}\n", conf)
-                self.assertIn("http_access allow CONNECT rb_chost rb_cport rb_mark\n", conf)
+                self.assertIn("http_access allow CONNECT !ap_bumped rb_chost rb_cport rb_mark\n", conf)
                 p = HttpAccess(conf)
                 self.assertEqual(p.decide(origin + "/private"), ("deny", "default-deny"))
                 self.assertEqual(p.decide(origin + "/public"), ("allow", "rb_shared"))

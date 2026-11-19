@@ -61,6 +61,22 @@ class SecurityHeaders:
         await self.app(scope, receive, send_with_headers)
 
 
+class RequireJsonMutations:
+    """Require a non-CORS-safelisted media type even for bodyless API mutations."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if (scope["type"] == "http" and scope["path"].startswith("/api/")
+                and scope["method"] not in {"GET", "HEAD", "OPTIONS"}):
+            types = [value for name, value in scope["headers"] if name == b"content-type"]
+            if len(types) != 1 or types[0].partition(b";")[0].strip().lower() != b"application/json":
+                response = JSONResponse({"error": "Content-Type must be application/json"}, status_code=415)
+                return await response(scope, receive, send)
+        return await self.app(scope, receive, send)
+
+
 class BasicAuth:
     """Pure ASGI middleware, so streaming responses (SSE) are untouched."""
 
@@ -96,6 +112,7 @@ class State:
 
 state = State()
 app = FastAPI(title="agent-proxy", docs_url=None, redoc_url=None)
+app.add_middleware(RequireJsonMutations)
 app.add_middleware(BasicAuth)
 app.add_middleware(SecurityHeaders)
 

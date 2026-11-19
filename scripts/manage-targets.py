@@ -54,6 +54,7 @@ class Client:
         headers = dict(self.headers)
         if body is not None:
             data = json.dumps(body).encode()
+        if method != "GET":
             headers["Content-Type"] = "application/json"
         req = urllib.request.Request(self.url + path, data=data, method=method, headers=headers)
         try:

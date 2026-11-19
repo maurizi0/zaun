@@ -12,7 +12,7 @@ async function api(method, url, body) {
   // resolve against origin: a page opened as http://user:pass@host/ cannot fetch relative URLs
   const res = await fetch(new URL(url, location.origin), {
     method,
-    headers: body ? { "Content-Type": "application/json" } : {},
+    headers: method !== "GET" ? { "Content-Type": "application/json" } : {},
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));

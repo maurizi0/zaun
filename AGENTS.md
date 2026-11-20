@@ -72,9 +72,11 @@ Basic authentication protects endpoints except `/ca.pem`, `/ca.crt` and `/health
 
 - `GET /api/state`, `POST /api/rules`, `PUT|DELETE /api/rules/{id}`, `POST /api/reapply`.
 - `GET /api/export`, `POST /api/import?mode=replace|merge`, `GET /api/generated`, `GET /api/ca`.
-- `GET /api/logs?limit=N`, `GET /api/logs/stream` (SSE), `GET /api/logs/download` (authenticated JSON attachment).
+- `GET /api/logs?limit=N`, `GET /api/logs/stream` (SSE), `GET /api/logs/download` (authenticated `application/gzip` attachment named `zaun-logs.tar.gz`).
 
-Log downloads include recent server-buffered access events, newest first, independently of UI filters/clear. They preserve every event field and original JSON value type, including URL, detail, ID and epoch, without download-time filtering or redaction, and set no-store/nosniff headers. Export every retained buffer entry without separate record, byte or field-length limits; normal log-buffer retention still applies. Keep the download unavailable when UI credentials are unset; never accept a user-provided filesystem path or attachment filename. Event paths and client addresses can still be sensitive.
+The download streams a compressed tar archive of the raw Squid access and firewall event logs, including all retained numbered rotations. Filtering or clearing the UI log view has no effect on the archive. Files are included as recorded and may contain sensitive URL paths and client addresses.
+
+Keep the source paths and attachment filename server-controlled. Return HTTP 503 when the UI password is unset. Set `Cache-Control: no-store` and `X-Content-Type-Options: nosniff` on the download.
 
 `scripts/manage-targets.py` uses only Python's standard library. It supports `list`, `add`, `import`, `disable`, `enable` and `remove`:
 

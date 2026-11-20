@@ -10,12 +10,12 @@ Deploy the Zaun Agent Proxy in a containerized environment using Podman.
    ```bash
    podman build . -t zaun-agent-proxy:latest -f Containerfile
    ```
-2. Configure [`zaun-pod.yaml`](zaun-pod.yaml) and specify your agent container image and set a **UI password**! 
+2. Configure [`zaun-pod.yaml`](zaun-pod.yaml) and specify your agent container image and set a **UI password**!
 3. Start the pod (`zaun-proxy` and `zaun-agent`):
    ```bash
    podman kube play zaun-pod.yaml
    ```
-4. Access the proxy at http://127.0.0.1:18080. The agent is preconfigured to use it as an HTTP proxy and IP gateway.
+4. Access the proxy Web UI at http://127.0.0.1:18080. The agent is preconfigured to use it as an HTTP proxy and IP gateway.
 5. Open an interactive shell to run your preferred agent tool:
    ```bash
    podman exec -it zaun-agent bash

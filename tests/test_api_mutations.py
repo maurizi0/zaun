@@ -2,7 +2,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "app"))
 
@@ -33,3 +33,29 @@ class MutationContentTypeTest(unittest.IsolatedAsyncioTestCase):
         for media_type in [b"application/json", b"Application/JSON; charset=utf-8"]:
             self.assertIsNone(await self.dispatch("POST", "/api/reapply", media_type))
         self.assertIsNone(await self.dispatch("GET", "/api/state"))
+
+
+@unittest.skipUnless(importlib.util.find_spec("fastapi"), "FastAPI required for import checks")
+class ImportModeTest(unittest.IsolatedAsyncioTestCase):
+    async def test_invalid_mode_rejected_before_commit(self):
+        from agentproxy import main
+
+        for query in (b"mode=mrge", b"mode="):
+            request = main.Request({"type": "http", "query_string": query})
+            with self.subTest(query=query), patch.object(main, "commit") as commit:
+                with self.assertRaises(main.HTTPException) as error:
+                    await main.import_config(request)
+                self.assertEqual(error.exception.status_code, 400)
+                commit.assert_not_awaited()
+
+    async def test_supported_modes_and_default(self):
+        from agentproxy import main
+
+        existing = main.validate_rule({"kind": "allow", "target": "existing.example"}, [])
+        for query, keep_existing in [(b"mode=merge", True), (b"mode=replace", False), (b"", False)]:
+            request = main.Request({"type": "http", "query_string": query})
+            with (self.subTest(query=query), patch.object(main.state, "rules", [existing]),
+                  patch.object(main, "_body", return_value={"rules": []}),
+                  patch.object(main, "commit") as commit, patch.object(main, "_state_doc")):
+                await main.import_config(request)
+                self.assertEqual(commit.await_args.args[0], [existing] if keep_existing else [])

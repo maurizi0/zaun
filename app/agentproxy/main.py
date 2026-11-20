@@ -296,8 +296,10 @@ async def export():
 
 @app.post("/api/import")
 async def import_config(request: Request):
-    data = await _body(request)
     mode = request.query_params.get("mode", "replace")
+    if mode not in {"merge", "replace"}:
+        raise HTTPException(400, "import mode must be merge or replace")
+    data = await _body(request)
     try:
         imported = cfg.rules_from_export(data)
         settings = cfg.settings_from_doc(data, base=state.settings)

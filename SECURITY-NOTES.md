@@ -1,0 +1,9 @@
+# Security notes
+
+- Keep the admin UI on a trusted interface or access it through an SSH tunnel. Proxy clients are restricted by source network; the UI password does not authenticate proxy requests.
+- Never give agent containers `NET_ADMIN`, `--privileged` or the host's container-management socket. Start agents only after the proxy is ready. Never use container mode with host networking.
+- Gateway agents need a controlled route through Zaun without an alternative internet path. Protect services on the gateway separately; its forwarding rules do not cover traffic addressed to the server itself.
+- HTTPS inspection decrypts agent traffic. Protect the CA private key, state backups and configuration exports; exports may include upstream credentials. Keep upstream TLS verification enabled.
+- Prefer narrow allow rules for sensitive paths. Deny rules do not normalize percent-encoded paths, so an encoded URL may evade a path deny.
+- Deny targets can use `*/admin*` to block paths starting with `/admin` on any host, or `*/*admin*` to match `admin` anywhere in the path. Matching is case-insensitive and deny rules win over allows. A deny target without a scheme or port matches HTTP and HTTPS on every proxy destination port. A scheme alone selects its default port. An explicit port selects only that port. This also applies to existing deny rules when reapplied. To keep a default-port-only deny for a host, use a group such as `http://example.com, https://example.com`.
+- Removing a firewall rule blocks new connections; established connections remain open until they close. Query strings are stripped from proxy logs, but URL paths can still contain sensitive information.

@@ -11,7 +11,7 @@ kind: Pod
 metadata:
   name: zaun
   annotations:
-    io.podman.annotations.userns: "keep-id"
+    # io.podman.annotations.userns: "keep-id"
 
 spec:
   containers:

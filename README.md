@@ -1,27 +1,28 @@
 # Zaun
 
-Zaun controls which network destinations AI agents can reach, with a web UI for managing access rules and viewing traffic. Run it alongside agents in a Podman pod or on a Debian gateway serving agents elsewhere on your network.
+Zaun is an easy-to-use **HTTP proxy** and **firewall** designed to control and restrict network access for AI agents. (Keeping them behind the *Zaun*).
 
-This project is mainly vibe coded. 
-
-![Zaun Proxy Tab](zaun.png)
+*This project is in lage parts vibe-coded.*
 
 ## Features
 
-- Allow or deny HTTP/HTTPS destinations by host, URL path and port.
-- Allow direct TCP/UDP connections to specific hosts or networks.
-- Block unmatched traffic by default; deny rules take priority.
-- Apply rule changes live, view proxy and firewall logs together, and download active and rotated raw logs as a compressed archive.
-- Enable WebSockets per rule, chain an upstream proxy, and import/export configuration.
+- Allow or deny HTTP, HTTPS, WS, and WSS connections based on hostname, URL path, and port.
+- Allow direct TCP/UDP connections to specific hosts/ports or networks.
+- Default-deny policy: All traffic is blocked unless explicitly allowed.
+- Easy Web-based UI for managing firewall rules, with changes applied immediately.
+- Monitor agent network activity in real time. 
+- Download complete logs to find out what your agent was doing on Hugging Face.
 
-## Modes
+## Web UI
 
-| Mode | Use it when | Setup |
-|---|---|---|
-| **Gateway** | Agents run on other machines and route through a dedicated Debian 13 server. | [Gateway guide](examples/gateway-mode/README.md) |
-| **Container** | Agents and the proxy share a Podman pod's network namespace. | [Container guide](examples/container-mode/README.md) |
+![Zaun Proxy Tab](zaun.png)
 
-Both modes use an explicit HTTP/HTTPS proxy. Agents must trust Zaun's CA so it can inspect HTTPS paths. Gateway mode also requires routing agents through the server; setting proxy variables alone does not enforce their network access.
+## Deployment Modes
+
+Zaun supports two deployment modes: **[Gateway](examples/gateway-mode/README.md)** and **[Container](examples/container-mode/README.md)**.
+
+- **Gateway Mode** is designed for homelabs and network segments where Zaun acts as the default gateway and intercepting proxy. Zaun controls outbound traffic from the network, enforcing access rules for all connected agents.
+- **Container Mode** is designed for containerized environments where Zaun runs as a sidecar container alongside an agent. The Zaun container acts as the agent's network gateway, enforcing access rules on its outbound traffic.
 
 ## Technology
 
@@ -59,11 +60,4 @@ The example guides provide ready-to-edit configuration. These are the applicatio
 Upstream proxy and TLS verification settings can also be changed in the UI. Saved settings override their environment defaults on restart. Back up the state directory to retain your rules and CA.
 
 ## Security notes
-
-- Keep the admin UI on a trusted interface or access it through an SSH tunnel. Proxy clients are restricted by source network; the UI password does not authenticate proxy requests.
-- Never give agent containers `NET_ADMIN`, `--privileged` or the host's container-management socket. Start agents only after the proxy is ready. Never use container mode with host networking.
-- Gateway agents need a controlled route through Zaun without an alternative internet path. Protect services on the gateway separately; its forwarding rules do not cover traffic addressed to the server itself.
-- HTTPS inspection decrypts agent traffic. Protect the CA private key, state backups and configuration exports; exports may include upstream credentials. Keep upstream TLS verification enabled.
-- Prefer narrow allow rules for sensitive paths. Deny rules do not normalize percent-encoded paths, so an encoded URL may evade a path deny.
-- Deny targets can use `*/admin*` to block paths starting with `/admin` on any host, or `*/*admin*` to match `admin` anywhere in the path. Matching is case-insensitive and deny rules win over allows. A deny target without a scheme or port matches HTTP and HTTPS on every proxy destination port. A scheme alone selects its default port. An explicit port selects only that port. This also applies to existing deny rules when reapplied. To keep a default-port-only deny for a host, use a group such as `http://example.com, https://example.com`.
-- Removing a firewall rule blocks new connections; established connections remain open until they close. Query strings are stripped from proxy logs, but URL paths can still contain sensitive information.
+[SECURITY-NOTES.md](SECURITY-NOTES.md)

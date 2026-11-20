@@ -10,7 +10,7 @@ Deploy the Zaun Agent Proxy in a containerized environment using Podman.
    ```bash
    podman build . -t zaun-agent-proxy:latest -f Containerfile
    ```
-2. Configure [`zaun-pod.yaml`](zaun-pod.yaml) and specify your agent container image.
+2. Configure [`zaun-pod.yaml`](zaun-pod.yaml) and specify your agent container image and set a **UI password**! 
 3. Start the pod (`zaun-proxy` and `zaun-agent`):
    ```bash
    podman kube play zaun-pod.yaml

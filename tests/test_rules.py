@@ -81,6 +81,15 @@ class PatternTest(unittest.TestCase):
 
 
 class RuleTest(unittest.TestCase):
+    def test_import_preserves_only_ascii_alphanumeric_ids(self):
+        ids = ["Rule42", "¹ᵃ٣", "Rule٤2"]
+        rules = cfg.rules_from_export({"rules": [
+            {"id": rid, "kind": "allow", "target": "example.com"} for rid in ids
+        ]})
+        self.assertEqual(rules[0].id, "Rule42")
+        for rule in rules[1:]:
+            self.assertRegex(rule.id, r"\A[A-Za-z0-9]+\Z")
+
     def test_any_host_path_deny(self):
         deny = validate_rule({"kind": "deny", "target": "*/admin*"}, [])
         allow = Rule("allow1", "allow", "site", "example.com")

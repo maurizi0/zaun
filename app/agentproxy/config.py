@@ -67,8 +67,8 @@ def rules_from_export(doc: dict) -> list[Rule]:
     for i, raw in enumerate(doc["rules"]):
         if not isinstance(raw, dict):
             raise RuleError(f"rule #{i + 1} is not an object")
-        rid = raw.get("id") if isinstance(raw.get("id"), str) and raw["id"].isalnum() else None
-        if rid in seen_ids:
+        rid = raw.get("id")
+        if not isinstance(rid, str) or not rid.isascii() or not rid.isalnum() or rid in seen_ids:
             rid = None
         try:
             rule = validate_rule(raw, rules, rule_id=rid)
